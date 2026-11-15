@@ -311,6 +311,8 @@ function order(x,y){const us=sel.filter(e=>e.u&&e.f==0&&e.t!='truck');if(!us.len
  if(t&&t.t=='mcv'&&t.f==0&&us.includes(t)){deploy(t);return}
  fx(x,y,10);
  if(tool){const es=us.filter(u=>u.t=='eng');if(es.length){const rr=tool=='cut'?roadAt(x,y):null;if(tool=='cut'&&!rr)say('No road there');else{const px=rr?rr.x:x,py=rr?rr.y:y;es.forEach(u=>{cmd(u);u.act=tool;u.at={x:px,y:py,t:'pt'};u.w=0});say('Engineers heading out to '+(rr.e.cut?'repair':'blow')+' the road')}tool=null;return}tool=null}
+ const es=us.filter(u=>u.t=='eng'),rr=roadAt(x,y);
+ if(es.length&&rr&&rr.e.cut){es.forEach(u=>{cmd(u);u.act='cut';u.at={x:rr.x,y:rr.y,t:'pt'};u.w=0});say('Engineers heading out to repair the road');return}
  if(t&&!t.isB&&t.f!=0&&t.f>=0&&(t.u||t.t=='hq'||t.def)){for(const u of us){cmd(u);if(ST[u.t].dmg){u.tgt=t;u.auto=0}else go(u,t.x,t.y,60)}return}
  if(t&&t.isB){for(const u of us){cmd(u);if((u.t=='eng'||u.t=='blayer')&&t.hp<t.mhp){u.act='rep';u.at=t}else if(u.t=='eng'&&t.hp>0){u.act='blow';u.at=t;u.w=0}else if(ST[u.t].dmg&&t.hp>0){u.tgt=t;u.auto=0}else go(u,t.x,side(u.y)?1295:1105)}return}
  if(t&&t.s&&t.t!='hq'&&t.f!=0){for(const u of us){cmd(u);if(u.t!='art'&&u.t!='mcv'){u.act='cap';u.at=t}else go(u,t.x,t.y,80)}return}
@@ -369,7 +371,7 @@ function hud(){const mine=E.filter(e=>e.f==0),tr=mine.filter(e=>e.t=='truck').le
  $('b_dep').style.display=sel.some(e=>e.t=='mcv')?'':'none';{const en=sel.some(e=>e.t=='eng');hudBuild(en);for(const k of ['cut','dig']){const b=$('b_'+k),on=k=='cut'?tool=='cut':(placing&&placing.k=='trench');b.style.display=en?'':'none';b.style.borderColor=on?'#e8b04a':'';b.style.color=on?'#e8b04a':''}}
  const u=sel.filter(e=>e.u),s1=sel[0];let h='';if(sel.length==1&&s1)h=`${s1.u?ST[s1.t].n:s1.def?DEF[s1.k].n:s1.t.toUpperCase()}<br>HP ${s1.hp|0}/${s1.mhp||'-'}${s1.t=='town'?'<br>Garrison '+s1.gar+'/4':''}${s1.q&&s1.q.length?'<br>Queue '+s1.q.length:''}${s1.site?'<br>Under construction '+(s1.prog*100|0)+'%':''}`;
  else if(sel.length){const c={};u.forEach(e=>c[e.t]=(c[e.t]||0)+1);h=Object.entries(c).map(([k,v])=>v+' '+ST[k].n).join('<br>')}else h=hasHQ?'Select units. Right-click to act.<br>Q/F/E/R/T build when HQ selected.':'Select the Mobile HQ, then press H or double-click it to deploy.';
- $('info').innerHTML=h+(sel.some(s=>s.t=='mcv')?'<br>H / double-click: deploy HQ':'')+(sel.some(s=>s.t=='eng')?'<br>B build · C road · V trench · drag to build lines · RMB bridge: blow'+(tool?'<br>Tool: '+tool:''):'')}
+ $('info').innerHTML=h+(sel.some(s=>s.t=='mcv')?'<br>H / double-click: deploy HQ':'')+(sel.some(s=>s.t=='eng')?'<br>B build · C road · V trench · drag to build lines · RMB broken road: repair'+(tool?'<br>Tool: '+tool:''):'')}
 function resize(){C.width=innerWidth;C.height=innerHeight}resize();addEventListener('resize',resize);
 const w2=(sx,sy)=>({x:sx/cam.z+cam.x,y:sy/cam.z+cam.y});
 C.addEventListener('mousedown',e=>{mouse.x=e.clientX;mouse.y=e.clientY;if(e.button==0)mouse.drag={x:e.clientX,y:e.clientY};if(e.button==1){mouse.pan={x:e.clientX,y:e.clientY};e.preventDefault()}});
