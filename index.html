@@ -42,7 +42,8 @@ const DEF={
  at:{n:'AT Gun',cost:140,base:'emplacement',gun:'atGun',hp:140,ter:'land',rng:270,dmg:45,rate:1.6,a:'at',vs:['tank','art','mcv','scout','truck','eng']},
  mortar:{n:'Mortar Pit',cost:150,spr:'mortarPit',hp:100,ter:'land',rng:420,min:90,dmg:24,rate:2.4,splash:45,ar:1,sp:200,a:'art'},
  cram:{n:'C-RAM',cost:200,base:'cramBase',gun:'cramGun',hp:120,ter:'land',rng:330,rate:.6,cram:1},
- bunker:{n:'Bunker',cost:260,spr:'bunker',hp:500,ter:'land',rng:210,dmg:11,rate:.5,sp:550,a:'bunk',r:16,bt:3}};
+ bunker:{n:'Bunker',cost:260,spr:'bunker',hp:500,ter:'land',rng:210,dmg:11,rate:.5,sp:550,a:'bunk',r:16,bt:3},
+ silo:{n:'Missile Silo',cost:450,spr:'missileSilo',hp:520,ter:'land',r:18,rng:1200,vis:260,silo:1,rate:18}};
 const LINE={sand:22,trap:26,trench:40};
 /* ================= ASSETS ================= */
 const PAL={ground:['#85744a','#a3834a','#b98f50','#c9a05a','#d6b06a'],road:'#7b8284',roadHi:'#9aa09f',conc:'#b0a894',concLo:'#8a8372',concDk:'#9d9582',tank:'#d8d6cc',water:'#2d5568',deck:'#9a9c96',
@@ -119,6 +120,7 @@ S.cramBase={w:16,h:16,team:1,shadow:1,draw(c,t){rect(c,1,1,14,14,PAL.concLo);rec
 S.atGun={w:16,h:16,team:1,draw(c,t){rect(c,7,0,2,8,PAL.lo);rect(c,6,0,4,1,PAL.hi);dot(c,7,2,PAL.hi);rect(c,3,8,1,3,PAL.tire);rect(c,12,8,1,3,PAL.tire);rect(c,7,9,2,4,PAL.body);rect(c,4,7,8,2,PAL.hi);rect(c,5,8,6,1,t)}};
 S.mgGun={w:16,h:16,team:1,draw(c,t){rect(c,7,3,2,5,PAL.lo);rect(c,6,8,4,4,PAL.body);rect(c,6,8,4,1,PAL.hi);rect(c,10,9,2,2,PAL.drab);dot(c,7,10,t);dot(c,8,10,t)}};
 S.cramGun={w:16,h:16,team:1,draw(c,t){disc(c,8,9,4,'#e6e4da');dot(c,7,8,'#ffffff');rect(c,5,5,6,2,PAL.body);rect(c,6,1,4,5,PAL.lo);for(let y=1;y<6;y+=2)dot(c,7,y,PAL.hi);rect(c,6,0,4,1,PAL.hi);dot(c,8,12,t)}};
+S.missileSilo={w:32,h:32,team:1,shadow:3,draw(c,t){rect(c,2,4,28,24,PAL.concLo);rect(c,3,3,26,23,PAL.conc);rect(c,6,7,20,16,PAL.concDk);rect(c,8,9,16,12,'#45433b');rect(c,10,11,12,8,'#292822');for(const x of [11,16,21]){rect(c,x,5,2,5,PAL.lo);rect(c,x,4,2,2,PAL.hi);dot(c,x,t)}rect(c,7,24,18,3,t);dot(c,16,15,PAL.flash)}};
 
 S.rocket={w:16,h:16,team:1,shadow:2,draw(c,t){rect(c,7,12,2,2,PAL.flash);dot(c,7,14,PAL.fire);dot(c,8,14,PAL.fire);dot(c,7,15,'#b8431c');rect(c,7,5,2,7,'#c8c8c0');rect(c,8,5,1,7,'#9a9a92');rect(c,6,10,1,2,PAL.lo);rect(c,9,10,1,2,PAL.lo);rect(c,7,2,2,3,t)}};
 S.smokePuff={w:8,h:8,draw(c){for(let y=0;y<8;y++)for(let x=0;x<8;x++){const d=Math.hypot(x+.5-4,y+.5-4);if(d<3.2&&(((x+y)&1)==0||d<2))dot(c,x,y,d<2?'#8a8378':'#5c5750')}}};
@@ -228,6 +230,9 @@ say(FN[f]+' eliminated!');if(f==0)end('DEFEAT');else if(F.filter(x=>x.alive).len
 function end(t){over=1;const d=$('end');d.style.display='flex';d.textContent=t}
 function find(u,r){let b=null,bd=r;for(const t of E){if(t.f<0||t.f==u.f||!(t.u||t.t=='hq'||(t.def&&(t.gun||t.blk)))||!seen(u.f,t))continue;const d=hyp(t.x-u.x,t.y-u.y)-(t.u?0:t.r);if(d<bd){bd=d;b=t}}return b}
 function fire(u,t,s,a){u.cd=s.rate;u.ang=Math.atan2(t.y-u.y,t.x-u.x);const ar=u.t=='art'||!!s.ar;P.push({x:u.x,y:u.y,tx:t.x,ty:t.y,f:u.f,d:s.dmg,spl:s.splash||0,sp:s.sp||(ar?260:u.t=='inf'?320:520),tg:ar||t.isB?null:t,bt:t.isB?t:null,a:a||u.t,ar,rk:ar||u.t=='inf',tot:hyp(t.x-u.x,t.y-u.y),sx:u.x,sy:u.y})}
+function launchBarrage(silo,x,y){if(silo.cd>0){say('Missile Silo reloading');return}const d=DEF.silo;silo.cd=d.rate;silo.gang=Math.atan2(y-silo.y,x-silo.x);
+ for(let i=0;i<7;i++){const a=rnd(0,Math.PI*2),r=rnd(0,90),tx=cl(x+Math.cos(a)*r,70,W-70),ty=cl(y+Math.sin(a)*r,70,W-70),sp=220+rnd(-25,25);P.push({x:silo.x,y:silo.y,tx,ty,f:silo.f,d:105,spl:110,sp,ar:1,rk:1,a:'silo',tot:hyp(tx-silo.x,ty-silo.y),sx:silo.x,sy:silo.y,delay:i*.22})}
+ say('Missile barrage launched')}
 function roadHit(p){const r=roadAt(p.tx,p.ty);if(!r||r.e.cut||hyp(r.x-p.tx,r.y-p.ty)>p.spl*.5+6)return;const e=r.e;if(T-(e.ht||-99)>25)e.hn=0;e.ht=T;if(++e.hn>=3){const re=e.n.a.find(q=>q.n==r.n);e.cut=re.cut=1;e.cx=re.cx=r.x;e.cy=re.cy=r.y;fx(r.x,r.y,40);if(vi(0,r.x,r.y)>0)say('A road was blown apart!')}}
 function impact(p){fx(p.tx,p.ty,p.spl?p.spl*.7:9);if(p.spl)roadHit(p);if(p.spl){TC.getContext('2d').drawImage(Assets.get('scorch',0),Math.round(p.tx-16),Math.round(p.ty-16));SC.push([p.tx,p.ty]);if(SC.length>400)SC.shift()}if(p.spl){for(const e of E.slice())if(e.f!=p.f&&e.hp>0){const d=hyp(e.x-p.tx,e.y-p.ty)-(e.t=='hq'?e.r:0);if(d<p.spl)hurt(e,p.d*mult(p.a,e.t)*(1-d/p.spl*.5))}}else if(p.tg&&p.tg.hp>0)hurt(p.tg,p.d*mult(p.a,p.tg.t));
 if(p.bt)hurtB(p.bt,p.d*(p.ar?1.6:p.a=='tank'?1.2:p.a=='scout'?.2:.8))}
@@ -307,7 +312,9 @@ function aiThink(f){const me=F[f],hq=hqs[f],ms=E.filter(e=>e.f==f&&e.u&&e.t!='tr
   const own=rigs.filter(r=>r.f==f),pt=own.length&&Math.random()<.7?own[rnd(0,own.length)|0]:hq;u.post={x:pt.x+rnd(-90,90),y:pt.y+rnd(-90,90)};go(u,u.post.x,u.post.y)}}
 function pickAt(x,y){let b=null,bd=1e9;for(const e of E){const d=hyp(e.x-x,e.y-y);if(d<(e.u?14:e.r)+6/cam.z&&d<bd&&(e.f==0||seen(0,e))){b=e;bd=d}}
  if(!b)for(const br of bridges)if(Math.abs(x-br.x)<46&&Math.abs(y-RY)<66)b=br;return b}
-function order(x,y){const us=sel.filter(e=>e.u&&e.f==0&&e.t!='truck');if(!us.length)return;const t=pickAt(x,y);
+function order(x,y){const t=pickAt(x,y),silo=sel.find(e=>e.def&&e.k=='silo'&&e.f==0&&!e.site);
+ if(silo){if(hyp(x-silo.x,y-silo.y)>DEF.silo.rng){say('Target is out of missile range');return}if(!seen(0,{x,y,s:1,f:-1})){say('Target area is not visible');return}launchBarrage(silo,x,y);return}
+ const us=sel.filter(e=>e.u&&e.f==0&&e.t!='truck');if(!us.length)return;
  if(t&&t.t=='mcv'&&t.f==0&&us.includes(t)){deploy(t);return}
  fx(x,y,10);
  if(tool){const es=us.filter(u=>u.t=='eng');if(es.length){const rr=tool=='cut'?roadAt(x,y):null;if(tool=='cut'&&!rr)say('No road there');else{const px=rr?rr.x:x,py=rr?rr.y:y;es.forEach(u=>{cmd(u);u.act=tool;u.at={x:px,y:py,t:'pt'};u.w=0});say('Engineers heading out to '+(rr.e.cut?'repair':'blow')+' the road')}tool=null;return}tool=null}
@@ -369,7 +376,7 @@ function hud(){const mine=E.filter(e=>e.f==0),tr=mine.filter(e=>e.t=='truck').le
  $('top').innerHTML=`<span>Oil <b>${F[0].oil|0}</b></span><span>Rigs <b>${rigs.filter(r=>r.f==0).length}</b>/${rigs.length}</span><span>Trucks en route <b>${tr}</b></span><span>Factions <b>${F.filter(f=>f.alive).length}</b>/5</span><span>Weather <b>${WX.kind=='clear'?'Clear':WX.kind=='rain'?'Rain':'Sandstorm'}</b></span>`;
  const hasHQ=ALLT.some(x=>x.f==0);ORDER.forEach(t=>{const b=$('b_'+t);b.textContent=`${ST[t].k} ${ST[t].n} ${ST[t].cost}`;b.disabled=F[0].oil<ST[t].cost||!F[0].alive||!hasHQ});
  $('b_dep').style.display=sel.some(e=>e.t=='mcv')?'':'none';{const en=sel.some(e=>e.t=='eng');hudBuild(en);for(const k of ['cut','dig']){const b=$('b_'+k),on=k=='cut'?tool=='cut':(placing&&placing.k=='trench');b.style.display=en?'':'none';b.style.borderColor=on?'#e8b04a':'';b.style.color=on?'#e8b04a':''}}
- const u=sel.filter(e=>e.u),s1=sel[0];let h='';if(sel.length==1&&s1)h=`${s1.u?ST[s1.t].n:s1.def?DEF[s1.k].n:s1.t.toUpperCase()}<br>HP ${s1.hp|0}/${s1.mhp||'-'}${s1.t=='town'?'<br>Garrison '+s1.gar+'/4':''}${s1.q&&s1.q.length?'<br>Queue '+s1.q.length:''}${s1.site?'<br>Under construction '+(s1.prog*100|0)+'%':''}`;
+ const u=sel.filter(e=>e.u),s1=sel[0];let h='';if(sel.length==1&&s1)h=`${s1.u?ST[s1.t].n:s1.def?DEF[s1.k].n:s1.t.toUpperCase()}<br>HP ${s1.hp|0}/${s1.mhp||'-'}${s1.t=='town'?'<br>Garrison '+s1.gar+'/4':''}${s1.q&&s1.q.length?'<br>Queue '+s1.q.length:''}${s1.site?'<br>Under construction '+(s1.prog*100|0)+'%':''}${s1.k=='silo'&&!s1.site?'<br>RMB: launch 7-missile barrage':''}`;
  else if(sel.length){const c={};u.forEach(e=>c[e.t]=(c[e.t]||0)+1);h=Object.entries(c).map(([k,v])=>v+' '+ST[k].n).join('<br>')}else h=hasHQ?'Select units. Right-click to act.<br>Q/F/E/R/T build when HQ selected.':'Select the Mobile HQ, then press H or double-click it to deploy.';
  $('info').innerHTML=h+(sel.some(s=>s.t=='mcv')?'<br>H / double-click: deploy HQ':'')+(sel.some(s=>s.t=='eng')?'<br>B build · C road · V trench · drag to build lines · RMB broken road: repair'+(tool?'<br>Tool: '+tool:''):'')}
 function resize(){C.width=innerWidth;C.height=innerHeight}resize();addEventListener('resize',resize);
@@ -455,7 +462,7 @@ function update(dt){T+=dt;updWx(dt);updHeli(dt);
   if(fs.size==1){const f=[...fs][0];if(f!=r.f){if(r.cf!=f){r.cf=f;r.cap=0}r.cap+=dt/(r.t=='rig'?4:5);if(r.cap>=1){r.f=f;r.cap=0;r.gar=0;r.tm=6;if(r.q)r.q.length=0;if(f==0)say('Captured '+r.t)}}else r.cap=Math.max(0,r.cap-dt*.5)}else if(!fs.size)r.cap=Math.max(0,r.cap-dt*.3)}
  for(const r of rigs)if(r.f>=0&&!r.tk&&F[r.f].alive){r.tm-=dt;if(r.tm<=0){const t=unit('truck',r.f,r.x,r.y);t.cur=r.nd;t.rt=[];t.src=r;r.tk=t;r.tm=6}}
  for(let i=CR.length;i--;){const c=CR[i];c.l-=dt;const u=us.find(u=>u.t!='truck'&&hyp(u.x-c.x,u.y-c.y)<28);if(u){F[u.f].oil+=c.o;CR.splice(i,1)}else if(c.l<=0)CR.splice(i,1)}
- for(let i=P.length;i--;){const p=P[i];if(p.tg&&p.tg.hp>0){p.tx=p.tg.x;p.ty=p.tg.y}const dx=p.tx-p.x,dy=p.ty-p.y,d=hyp(dx,dy),s=p.sp*dt;if(d<=s+4){impact(p);P.splice(i,1)}else{p.x+=dx/d*s;p.y+=dy/d*s;if(p.rk&&(p.sm=(p.sm||0)+dt)>.05){p.sm=0;FX.push({x:p.x,y:p.y,r:0,t:0,k:'smoke'})}}}
+ for(let i=P.length;i--;){const p=P[i];if(p.delay>0){p.delay-=dt;continue}if(p.tg&&p.tg.hp>0){p.tx=p.tg.x;p.ty=p.tg.y}const dx=p.tx-p.x,dy=p.ty-p.y,d=hyp(dx,dy),s=p.sp*dt;if(d<=s+4){impact(p);P.splice(i,1)}else{p.x+=dx/d*s;p.y+=dy/d*s;if(p.rk&&(p.sm=(p.sm||0)+dt)>.05){p.sm=0;FX.push({x:p.x,y:p.y,r:0,t:0,k:'smoke'})}}}
  for(let i=FX.length;i--;){FX[i].t+=dt*(FX[i].k?1.2:1.6);if(FX[i].t>1)FX.splice(i,1)}
  aiT-=dt;if(aiT<=0){aiT=1;for(const f of F)if(f.alive&&!over&&!E.some(e=>e.f==f.i&&e.u&&e.t!='truck')&&!ALLT.some(t=>t.f==f.i)&&!HE.some(h=>h.f==f.i))elim(f.i)}
  visT-=dt;if(visT<=0){visT=.2;updVis();updGh(.2);updFog()}
