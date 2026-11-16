@@ -26,8 +26,6 @@ const DEF={
  silo:{n:'Missile Silo',cost:450,spr:'missileSilo',hp:520,ter:'land',r:18,rng:1200,vis:260,silo:1,rate:18}};
 const LINE={sand:22,trap:26,trench:40,road:32};
 let MAP='desert';
-const ISLAND={x:1200,y:1200,rx:160,ry:72};
-const islandAt=(x,y)=>{const nx=(x-ISLAND.x)/ISLAND.rx,ny=(y-ISLAND.y)/ISLAND.ry;return Math.pow(Math.abs(nx),8)+Math.pow(Math.abs(ny),8)<=1.05};
 /* dense jungle canopy: sprite trees everywhere except around roads, settlements and rigs */
 function forest(g){const K=['treeBroad','treeOlive','treePalm','treeBroad','scrub'],ents=[...rigs,...towns,...hqs.filter(h=>h!==hqs[0])].map(e=>[e.x,e.y,e.isHQ?75:e.capital?105:e.t=='rig'?52:62]),sg=segs().filter(s=>!s.br);g.imageSmoothingEnabled=true;
  for(let y=10;y<W;y+=10)for(let x=10;x<W;x+=10){const jx=x+hrnd(x,y,1)*8-4,jy=y+hrnd(x,y,2)*8-4,m=vn(jx,jy,70,12)*.65+vn(jx,jy,20,13)*.35;if(m<.3)continue;
@@ -35,8 +33,8 @@ function forest(g){const K=['treeBroad','treeOlive','treePalm','treeBroad','scru
   if(!bad)for(const s of sg){if(segD(jx,jy,s.a,s.b).d<24){bad=1;break}}if(bad)continue;
   const n=K[hrnd(x,y,3)*5|0],cv=Assets.get(n,0),sc=(.6+hrnd(x,y,4)*.45+(m-.3)*.4)*(n=='scrub'?1.2:1);g.drawImage(cv,jx-cv.width*sc/2,jy-cv.height*sc/2,cv.width*sc,cv.height*sc)}
  g.imageSmoothingEnabled=false}
-/* the capital sits on a larger sandy island with separate north and south causeways */
-function island(g){for(let y=ISLAND.y-ISLAND.ry-4;y<=ISLAND.y+ISLAND.ry+4;y++)for(let x=ISLAND.x-ISLAND.rx-4;x<=ISLAND.x+ISLAND.rx+4;x++){const nx=(x-ISLAND.x)/ISLAND.rx,ny=(y-ISLAND.y)/ISLAND.ry,d=Math.pow(Math.abs(nx),8)+Math.pow(Math.abs(ny),8);if(islandAt(x,y)){g.fillStyle=d>.8?PAL.ground[4]:(hrnd(x>>2,y>>2,6)<.5?PAL.ground[2]:PAL.ground[3]);g.fillRect(x,y,1,1)}}for(const p of[[1148,1152],[1252,1152],[1148,1248],[1252,1248]]){g.imageSmoothingEnabled=true;g.drawImage(Assets.get(hrnd(p[0],p[1],1)<.5?'treePalm':'treeOlive',0),p[0]-12,p[1]-12,24,24);g.imageSmoothingEnabled=false}}
+/* the capital sits on a sandy island in the middle of the river; the N-S road is its causeway */
+function island(g){for(let y=1138;y<1262;y++)for(let x=1058;x<1342;x++){const nx=(x-1200)/136,ny=(y-1200)/56,d=Math.pow(Math.abs(nx),8)+Math.pow(Math.abs(ny),8)+(hrnd(x>>2,y>>2,5)-.5)*.2;if(d<1){g.fillStyle=d>.8?PAL.ground[4]:(hrnd(x>>2,y>>2,6)<.5?PAL.ground[2]:PAL.ground[3]);g.fillRect(x,y,1,1)}}for(const p of[[1160,1156],[1242,1156],[1162,1246],[1240,1246]]){g.imageSmoothingEnabled=true;g.drawImage(Assets.get(hrnd(p[0],p[1],1)<.5?'treePalm':'treeOlive',0),p[0]-12,p[1]-12,24,24);g.imageSmoothingEnabled=false}}
 const WATER=c=>{for(let y=1136;y<1264;y+=16)for(let x=0;x<W;x+=16)Assets.drawK(c,'water',0,x,y)};
 function applyMap(kind){MAP=kind;placeCap(kind=='snow'?1200:1000);WX.fog=kind=='snow'?.4:0;WX.sand=0;WX.kind='clear';WX.next=20;const g=TC.getContext('2d');g.clearRect(0,0,W,W);
  if(kind=='snow'){Terrain.jungle(g,W,W);forest(g);bridges.forEach(b=>{b.hp=0;b.rb=0})}
@@ -59,14 +57,13 @@ const bridges=[600,1800].map(x=>({isB:1,t:'bridge',x,y:RY,hp:500,mhp:500,rb:0}))
 const N=[],nd=(x,y)=>{const n={x,y,a:[],i:N.length,s:new Set()};N.push(n);return n};
 const l2=(a,b,br)=>{const w=hyp(a.x-b.x,a.y-b.y);a.a.push({n:b,w,br});b.a.push({n:a,w,br})};
 const lk=(a,b,br)=>{if(a==b||a.s.has(b))return;a.s.add(b);b.s.add(a);
- const L=hyp(a.x-b.x,a.y-b.y),n=Math.round(L/120);if(br||a.isl||b.isl||n<2){l2(a,b,br);return}
+ const L=hyp(a.x-b.x,a.y-b.y),n=Math.round(L/60);if(br||a.isl||b.isl||n<2){l2(a,b,br);return}
  const sd=(Math.round(a.x+b.x)*7+Math.round(a.y+b.y)*13)%997,nx=-(b.y-a.y)/L,ny=(b.x-a.x)/L,amp=Math.min(55,L*.16),ph=hrnd(sd,1,1)*6.28,fq=1+(sd%2),top=a.y<RY;let pv=a;
- for(let k=1;k<n;k++){const t=k/n,o=amp*Math.sin(t*Math.PI)*(.75*Math.sin(t*Math.PI*fq+ph)+.5*(hrnd(sd,k,2)-.5)),y=a.y+(b.y-a.y)*t+ny*o,m=nd(cl(a.x+(b.x-a.x)*t+nx*o,60,W-60),top?cl(y,60,1105):cl(y,1295,W-60));m.el=1;l2(pv,m);pv=m}l2(pv,b)};
+ for(let k=1;k<n;k++){const t=k/n,o=amp*Math.sin(t*Math.PI)*(.75*Math.sin(t*Math.PI*fq+ph)+.15*(hrnd(sd,k,2)-.5)),y=a.y+(b.y-a.y)*t+ny*o,m=nd(cl(a.x+(b.x-a.x)*t+nx*o,60,W-60),top?cl(y,60,1105):cl(y,1295,W-60));m.el=1;l2(pv,m);pv=m}l2(pv,b)};
 [...hqs,...rigs,...towns].forEach(e=>{if(e.isHQ){e.nd={x:e.x,y:e.y,a:[],s:new Set(),i:-1};const g=e.gate=nd(e.x+(e.x<W/2?80:-80),e.y);if(e.dormant)g.dormant=1;return}
  e.nd=nd(e.x,e.y);e.nd.R=e.r+14;if(Math.abs(e.y-RY)<80)e.nd.isl=1;if(e.t=='town'){e.nd.kit=1;e.nd.kw=48;e.nd.kh=42}});
 bridges.forEach(b=>{b.nN=nd(b.x,1060);b.nS=nd(b.x,1340);b.nN.R=b.nS.R=22});
-const HUBN=nd(ISLAND.x,ISLAND.y);HUBN.isl=1;
-const IN=nd(ISLAND.x,ISLAND.y-ISLAND.ry),IS=nd(ISLAND.x,ISLAND.y+ISLAND.ry);IN.R=IS.R=22;
+const HUBN=nd(1200,1200);HUBN.isl=1;const IN=nd(1200,1060),IS=nd(1200,1340);IN.R=IS.R=22;
 var SG=null;
 function buildRoads(){SG=null;const keep=N.filter(n=>!n.el&&!n.dormant);N.length=0;keep.forEach((n,i)=>{n.i=i;n.a=[];n.s=new Set();N.push(n)});
  bridges.forEach(b=>lk(b.nN,b.nS,b));lk(IN,HUBN);lk(HUBN,IS);for(const r of rigs)if(r.nd.isl)lk(HUBN,r.nd);
@@ -84,10 +81,23 @@ const TC=document.createElement('canvas');TC.width=TC.height=W;const BASE=docume
  WATER(g);
  R(g,0,1128,W,8,PAL.ground[3]);R(g,0,1264,W,8,PAL.ground[3]);R(g,0,1132,W,4,PAL.ground[4]);R(g,0,1264,W,4,PAL.ground[4]);island(g);
  BASE.getContext('2d').drawImage(TC,0,0);drawRoads(g);drawKits(g)})();
-function drawRoads(g){const segs=[];for(const n of N)for(const e of n.a)if(!e.br&&n.i<e.n.i)segs.push([n.x,n.y,e.n.x,e.n.y]);
- if(MAP!='snow')for(const b of bridges)segs.push([b.x,b.nN.y,b.x,1136],[b.x,1264,b.x,b.nS.y]);
- const st=(w,c,d)=>{g.strokeStyle=c;g.lineWidth=w;g.lineCap='round';g.lineJoin='round';g.setLineDash(d||[]);g.beginPath();for(const q of segs){g.moveTo(q[0],q[1]);g.lineTo(q[2],q[3])}g.stroke()};
- st(16,'rgba(40,40,30,.3)');st(12,PAL.road);st(3,PAL.roadHi);st(1,'rgba(215,210,190,.7)',[8,8]);g.setLineDash([]);
+function drawRoads(g){const S=[],md=(p,q)=>[(p.x+q.x)/2,(p.y+q.y)/2],pt=n=>[n.x,n.y];
+ /* straight bits + quadratic curves through every winding node = smooth roads */
+ for(const n of N){for(const e of n.a){const m=e.n;if(e.br||e.hid||n.i>=m.i||(n.el&&m.el))continue;const c=md(n,m);S.push({a:n.el?c:pt(n),b:m.el?c:pt(m)})}
+  if(n.el){const nb=n.a.filter(e=>!e.br&&!e.hid);if(nb.length==2)S.push({a:md(n,nb[0].n),b:md(n,nb[1].n),c:pt(n)})}}
+ if(MAP!='snow')for(const b of bridges)S.push({a:[b.x,b.nN.y],b:[b.x,1136]},{a:[b.x,1264],b:[b.x,b.nS.y]});
+ const path=()=>{g.beginPath();for(const q of S){g.moveTo(q.a[0],q.a[1]);if(q.c)g.quadraticCurveTo(q.c[0],q.c[1],q.b[0],q.b[1]);else g.lineTo(q.b[0],q.b[1])}};
+ const st=(w,c,al)=>{g.globalAlpha=al||1;g.strokeStyle=c;g.lineWidth=w;g.lineCap='round';g.lineJoin='round';path();g.stroke();g.globalAlpha=1};
+ st(24,'rgba(70,52,28,.14)');st(19,'rgba(70,52,28,.2)');
+ st(14,PAL.road);
+ st(9,'rgba(30,22,12,.22)');st(3.5,PAL.road);
+ st(2,PAL.roadHi,.4);
+ /* gravel / dirt speckle */
+ for(const q of S){const L=hyp(q.b[0]-q.a[0],q.b[1]-q.a[1]),n=Math.ceil(L/3);
+  for(let i=0;i<n;i++){const t=(i+hrnd(i,L|0,21))/n,u=1-t;
+   const x=q.c?u*u*q.a[0]+2*u*t*q.c[0]+t*t*q.b[0]:q.a[0]+(q.b[0]-q.a[0])*t,y=q.c?u*u*q.a[1]+2*u*t*q.c[1]+t*t*q.b[1]:q.a[1]+(q.b[1]-q.a[1])*t,
+   r=hrnd(x|0,y|0,22),ox=(hrnd(x|0,y|0,23)-.5)*15,oy=(hrnd(x|0,y|0,24)-.5)*15;
+   g.fillStyle=r<.5?'rgba(40,30,18,.35)':'rgba(210,190,150,.3)';g.fillRect(Math.round(x+ox),Math.round(y+oy),r<.15?2:1,1)}}
  for(const n of N){if(n.el||!n.R||n.kit)continue;const rr=n.R,x=Math.round(n.x),y=Math.round(n.y);disc(g,x,y,rr+2,'rgba(40,40,30,.3)');disc(g,x,y,rr,PAL.road);disc(g,x,y,rr-2,PAL.roadHi);disc(g,x,y,rr-4,PAL.road);disc(g,x,y,rr-9,'#6f7a45');disc(g,x,y,2,'#3f4e2a')}}
 /* towns are drawn from the 2x kit onto a temp canvas, then scaled down into the world map */
 function kit(g,x0,y0,w,h,seed,team,cap){const cv=document.createElement('canvas');cv.width=w*2;cv.height=h*2;const c=cv.getContext('2d');if(cap)Town2.capital(c,0,0,w*2,h*2,seed,team);else Town2.small(c,0,0,w*2,h*2,seed,team);g.imageSmoothingEnabled=true;g.drawImage(cv,x0,y0,w,h);g.imageSmoothingEnabled=false}
@@ -130,16 +140,16 @@ function launchBarrage(silo,x,y){if(silo.cd>0){say('Missile Silo reloading');ret
 function roadHit(p){const r=roadAt(p.tx,p.ty);if(!r||r.e.cut||hyp(r.x-p.tx,r.y-p.ty)>p.spl*.5+6)return;const e=r.e;if(T-(e.ht||-99)>25)e.hn=0;e.ht=T;if(++e.hn>=3){const re=e.n.a.find(q=>q.n==r.n);e.cut=re.cut=1;e.cx=re.cx=r.x;e.cy=re.cy=r.y;fx(r.x,r.y,40);if(vi(0,r.x,r.y)>0)say('A road was blown apart!')}}
 function impact(p){fx(p.tx,p.ty,p.spl?p.spl*.7:9);if(p.spl)roadHit(p);if(p.spl){TC.getContext('2d').drawImage(Assets.get('scorch',0),Math.round(p.tx-16),Math.round(p.ty-16));SC.push([p.tx,p.ty]);if(SC.length>400)SC.shift()}if(p.spl){for(const e of E.slice())if(e.f!=p.f&&e.hp>0){const d=hyp(e.x-p.tx,e.y-p.ty)-(e.t=='hq'?e.r:0);if(d<p.spl)hurt(e,p.d*mult(p.a,e.t)*(1-d/p.spl*.5))}}else if(p.tg&&p.tg.hp>0)hurt(p.tg,p.d*mult(p.a,p.tg.t));
 if(p.bt)hurtB(p.bt,p.d*(p.ar?1.6:p.a=='tank'?1.2:p.a=='scout'?.2:.8))}
-const isl=islandAt,isW=(x,y)=>MAP!='snow'&&Math.abs(y-RY)<60&&!isl(x,y)&&!bridges.some(b=>b.hp>0&&Math.abs(x-b.x)<40);
+const isl=(x,y)=>Math.abs(x-1200)<16||(x>1064&&x<1336&&y>1144&&y<1256),isW=(x,y)=>MAP!='snow'&&Math.abs(y-RY)<60&&!isl(x,y)&&!bridges.some(b=>b.hp>0&&Math.abs(x-b.x)<40);
 const side=y=>y<RY?0:1;
-function plan(x,y,tx,ty){const p=[],IS=(a,b)=>MAP!='snow'&&isl(a,b);
- if(IS(tx,ty)&&!IS(x,y))return[{x:ISLAND.x,y:y<RY?ISLAND.y-ISLAND.ry:ISLAND.y+ISLAND.ry},{x:ISLAND.x,y:ISLAND.y},{x:tx,y:ty}];
- if(IS(x,y)&&!IS(tx,ty)){const wy=ty<RY?ISLAND.y-ISLAND.ry:ISLAND.y+ISLAND.ry;return[{x:ISLAND.x,y:ISLAND.y},{x:ISLAND.x,y:wy},{x:tx,y:ty}]}
+function plan(x,y,tx,ty){const p=[],IS=(a,b)=>MAP!='snow'&&Math.abs(a-1200)<140&&Math.abs(b-RY)<56;
+ if(IS(tx,ty)&&!IS(x,y))return[{x:1200,y:y<RY?1100:1300},{x:1200,y:1200},{x:tx,y:ty}];
+ if(IS(x,y)&&!IS(tx,ty)){const wy=ty<RY?1100:1300;return[{x:1200,y:1200},{x:1200,y:wy},...plan(1200,wy,tx,ty)]}
 if(side(y)!=side(ty)){let bt=null,bd=1e9;for(const b of bridges)if(b.hp>0){const d=hyp(b.x-x,b.y-y)+hyp(b.x-tx,b.y-ty);if(d<bd){bd=d;bt=b}}
  const s=side(y);if(bt)p.push({x:bt.x,y:s?1330:1070},{x:bt.x,y:s?1070:1330});else return [{x,y:s?1290:1110}]}p.push({x:tx,y:ty});return p}
 const RB=t=>t=='tank'||t=='art';
 function segs(){if(SG)return SG;SG=[];for(const n of N)for(const e of n.a)if(n.i<e.n.i&&(n.x!=e.n.x||n.y!=e.n.y))SG.push({a:n,b:e.n,br:e.br,e});return SG}
-function roadAtMake(x,y,max=18){let b=null,bd=max;for(const r of MRS)if(!r.site){const p=segD(x,y,r.a,r.b);if(p.d<bd){bd=p.d;b={s:r,x:p.x,y:p.y}}}return b}
+function roadAtMake(x,y,max=18){let b=null,bd=max;for(const r of MRS)if(!r.site&&!r.hq){const p=segD(x,y,r.a,r.b);if(p.d<bd){bd=p.d;b={s:r,x:p.x,y:p.y}}}return b}
 function drv(x,y){for(const s of segs()){if(s.br&&s.br.hp<=0)continue;if(segD(x,y,s.a,s.b).d<=(s.br?17:7.5))return 1}if(roadAtMake(x,y))return 1;
  for(const n of N){if(n.el||n.dormant)continue;if(n.kit){if((Math.abs(x-n.x)<8&&Math.abs(y-n.y)<n.kh)||(Math.abs(y-n.y)<8&&Math.abs(x-n.x)<n.kw))return 1}else if(n.R&&hyp(x-n.x,y-n.y)<n.R-2)return 1}return 0}
 function nearRoad(x,y){const sy=side(y);let b=null,bd=1e9;for(const s of segs()){if(s.e.cut)continue;if(s.br){if(s.br.hp<=0||Math.abs(x-s.br.x)>60)continue}else if(side((s.a.y+s.b.y)/2)!=sy)continue;const p=segD(x,y,s.a,s.b);if(p.d<bd){bd=p.d;b={s,x:p.x,y:p.y}}}const mr=roadAtMake(x,y,bd);if(mr&&mr.s&&mr.s!==b?.s)b=mr;return b}
@@ -178,7 +188,7 @@ function turret(e,dt){if(e.drop>0){e.drop-=dt;return}prod(e,dt);if(e.t=='town'&&
  for(const u of E)if(u.u&&u.f==e.f&&u.t!='inf'&&u.hp<u.mhp&&hyp(u.x-e.x,u.y-e.y)<(hq?110:120))u.hp=Math.min(u.mhp,u.hp+(hq?4:6)*dt);
  if(e.cd<=0){const t=find(e,s.rng);if(t)fire(e,t,s,'tank')}}
 function unitAI(u,dt){const s=ST[u.t];if(u.drop>0){u.drop-=dt;return}if(u.t=='truck')return truckStep(u,dt);
- if(!u.act&&u.bq&&u.bq.length){const n=u.bq.shift();if(!n.dead&&(n.site||n.pt)){u.act=n.road?'road':n.site?'build':'dig';u.at=n;u.w=0}}
+ if(!u.act&&u.bq&&u.bq.length){const n=u.bq.shift();if(!n.dead&&(n.site||n.pt)){u.act=n.site?'build':'dig';u.at=n;u.w=0}}
  if(u.t=='blayer'&&!u.act&&!u.path.length&&T>(u.sc||0)){u.sc=T+1;const b=bridges.find(b=>b.hp<=0&&hyp(b.x-u.x,RY-u.y)<420);if(b){u.act='rep';u.at=b}}
  if(u.act){const t=u.at,gone=!t||(t.hp<=0&&!t.isB&&t.u!==undefined&&t.t!='rig'&&t.t!='town'&&t.t!='hq')||(u.act=='gar'&&t.f!=u.f)||(u.act=='cap'&&t.f==u.f)||t.dead||((u.act=='build'||u.act=='road')&&!t.site);
   if(gone){u.act=null;u.at=null}else{const tx=t.x,ty=t.isB?(side(u.y)?1295:1105):t.y,d=hyp(tx-u.x,ty-u.y),need=u.act=='cap'?30:t.isB?30:u.act=='dig'?70:t.def?t.r+24:44;
@@ -236,15 +246,15 @@ const gband=(x,y)=>{const X=(x|0)>>2<<2,Y=(y|0)>>2<<2;let v=.62*vn(X,Y,72,1)+.3*
 const DS=1.5;
 function placeCheck(k,x,y){const d=DEF[k],r=(d.r||8)*DS;let rt=null;
  if(x<50||x>W-50||y<50||y>W-50)return{ok:0,m:'Out of bounds',x,y};
- if(d.ter!='road'&&!isl(x,y)&&(isW(x,y)||(MAP!='snow'&&Math.abs(y-RY)<80)))return{ok:0,m:'Cannot build on the river',x,y};
+ if(d.ter!='road'&&!d.anyGround&&(isW(x,y)||(MAP!='snow'&&Math.abs(y-RY)<80)))return{ok:0,m:'Cannot build on the river',x,y};
  if(d.ter=='road'){if(isW(x,y)||!drv(x,y))return{ok:0,m:'Tank traps go on roads',x,y};const q=roadAt(x,y);if(q&&hyp(q.x-x,q.y-y)<16){x=q.x;y=q.y;rt=Math.atan2(q.e.n.y-q.n.y,q.e.n.x-q.n.x)}}
- else {if(drv(x,y))return{ok:0,m:'Cannot build on a road',x,y};if(d.ter=='sand'&&gband(x,y)<3)return{ok:0,m:'Needs bare sand (the pale ground)',x,y}}
+ else if(!d.anyGround){if(drv(x,y))return{ok:0,m:'Cannot build on a road',x,y};if(d.ter=='sand'&&gband(x,y)<3)return{ok:0,m:'Needs bare sand (the pale ground)',x,y}}
  if(d.ter!='road'){for(const e of rigs)if(hyp(e.x-x,e.y-y)<24+r+6)return{ok:0,m:'Too close to an oil rig',x,y};
   for(const e of ALLT){const w=e.capital?(e.kw||160):96,h=e.capital?(e.kh||128):84;if(x>e.kx-r&&x<e.kx+w+r&&y>e.ky-r&&y<e.ky+h+r)return{ok:0,m:'Too close to a town',x,y}}}
  for(const e of E)if(e.def&&hyp(e.x-x,e.y-y)<(e.r+r)*.7)return{ok:0,m:'Something is in the way',x,y};
  return{ok:1,x,y,rot:rt}}
 function mkDef(k,f,x,y,rot,site){const d=DEF[k],e=mk({t:'def',def:1,k,f,x,y,r:(d.r||8)*DS,hp:site?d.hp*.25:d.hp,mhp:d.hp,s:1,rot:rot||0,gang:-Math.PI/2,site:site?1:0,prog:0,bt:d.bt||Math.max(1,d.cost/50),vis:d.vis||(d.rng?d.rng+60:150)});if(!site)finishDef(e);return e}
-function roadCheck(x,y){return x>=50&&x<=W-50&&y>=50&&y<=W-50&&!isW(x,y)&&(MAP=='snow'||Math.abs(y-RY)>=80||isl(x,y))}
+function roadCheck(x,y){return x>=50&&x<=W-50&&y>=50&&y<=W-50&&!isW(x,y)&&(MAP=='snow'||Math.abs(y-RY)>=80)}
 function mkRoad(a,b,site=1){const r={road:1,site:site?1:0,prog:0,bt:1.6,x:(a.x+b.x)/2,y:(a.y+b.y)/2,a:{x:a.x,y:a.y},b:{x:b.x,y:b.y}};MRS.push(r);return r}
 function finishDef(e){const d=DEF[e.k];e.site=0;e.prog=1;e.hp=e.mhp;if(d.cover)e.cover=d.cover;if(d.rng||d.blk)e.gun=1}
 function defTarget(e,d){let b=null,bd=d.rng+1;for(const t of E){if(t.f<0||t.f==e.f||t.hp<=0||t.drop>0)continue;
@@ -257,13 +267,11 @@ function defAI(e,dt){const d=DEF[e.k];
  if(T>(e.sc||0)){e.sc=T+.25;e.ft=defTarget(e,d)}
  const t=e.ft;if(!t)return;if(t.hp<=0||t.dead||hyp(t.x-e.x,t.y-e.y)>d.rng+(t.u?0:t.r)){e.ft=null;return}
  e.gang=Math.atan2(t.y-e.y,t.x-e.x);if(e.cd<=0)fire(e,t,d,d.a)}
-function assignBuild(u,job,act){const busy=u.act&&((u.act=='build'||u.act=='road')&&u.at&&u.at.site&&!u.at.dead);if(busy)(u.bq=u.bq||[]).push(job);else{cmd(u);u.act=act;u.at=job;u.w=0}}
 function place(x,y,keep){const k=placing.k,d=DEF[k],us=sel.filter(u=>u.t=='eng'&&u.f==0);
  if(!us.length){say('Select an engineer to build');placing=null;return}
  const c=placeCheck(k,x,y,placing.rot);if(!c.ok){say(c.m);return}
  if(F[0].oil<d.cost){say('Not enough oil');return}
- F[0].oil-=d.cost;const st=mkDef(k,0,c.x,c.y,c.rot!=null?c.rot:placing.rot*Math.PI/2,1);
- const u=us.find(e=>e.act=='build'&&e.at&&e.at.site&&!e.at.dead)||us[0];assignBuild(u,st,'build');
+ F[0].oil-=d.cost;const st=mkDef(k,0,c.x,c.y,c.rot!=null?c.rot:placing.rot*Math.PI/2,1);for(const u of us){if(u.act=='build'&&u.at&&u.at.site&&!u.at.dead){(u.bq=u.bq||[]).push(st)}else{cmd(u);u.act='build';u.at=st}}
  fx(c.x,c.y,10);say('Building '+d.n);if(!keep)placing=null}
 function drawD(g,e,tm,a){const d=DEF[e.k];g.globalAlpha=a*(e.site?.5:1);
  if(d.spr)spr(g,e.k=='silo'&&e.cd>d.rate-3?'missileSiloOpen':d.spr,tm,e.x,e.y,e.rot||0,DS);else{spr(g,d.base,tm,e.x,e.y,0,DS);spr(g,d.gun,tm,e.x,e.y,(e.gang==null?-Math.PI/2:e.gang)+Math.PI/2,DS)}g.globalAlpha=1}
@@ -346,20 +354,27 @@ function drawLine(g){if(!placing)return 0;const k=placing.k,sp=LINE[k];if(!sp)re
  return 1}
 function placeDrag(a,b,keep){const k=placing.k,sp=LINE[k],us=sel.filter(u=>u.t=='eng'&&u.f==0);
  if(!us.length){say('Select an engineer to build');placing=null;return}
- const ls=sp?linePts(a,b,sp):{p:[b],ang:0,n:0};
+ const ls=sp?linePts(a,b,sp):{p:[b],ang:0,n:0};if(k!='trench'&&!ls.n)return place(b.x,b.y,keep);
  const d=DEF[k]||{},jobs=[];let bad=0,poor=0;
- if(k=='road'){if(!ls.n){say('Drag to build a makeshift road');return}if(!roadCheck(a.x,a.y)||!roadCheck(b.x,b.y)){say('Makeshift roads need dry ground');return}if(F[0].oil<15){say('Not enough oil');return}F[0].oil-=15;const r=mkRoad(a,b,1),u=us.find(e=>e.act=='road'&&e.at&&e.at.site&&!e.at.dead)||us[0];assignBuild(u,r,'road');say('Building makeshift road');if(!keep)placing=null;return}
- if(k!='trench'&&!ls.n)return place(b.x,b.y,keep);
+ if(k=='road'){if(!roadCheck(a.x,a.y)||!roadCheck(b.x,b.y)){say('Makeshift roads need dry ground');return}if(F[0].oil<15){say('Not enough oil');return}F[0].oil-=15;const r=mkRoad(a,b,1),u=us[0];cmd(u);u.act='road';u.at={x:(a.x+b.x)/2,y:(a.y+b.y)/2,road:r,site:1};u.at=r;u.w=0;say('Building makeshift road');if(!keep)placing=null;return}
  for(const q of ls.p){if(k=='trench'){if(isW(q.x,q.y)||(MAP!='snow'&&Math.abs(q.y-RY)<80)){bad++;continue}jobs.push({x:q.x,y:q.y,t:'pt',pt:1,ang:ls.ang});continue}
   const c=placeCheck(k,q.x,q.y);if(!c.ok){bad++;continue}if(F[0].oil<d.cost){poor=1;break}F[0].oil-=d.cost;jobs.push(mkDef(k,0,c.x,c.y,k=='trap'?0:ls.ang,1))}
- jobs.forEach((j,i)=>{const u=us[i%us.length];assignBuild(u,j,j.pt?'dig':'build')});
+ jobs.forEach((j,i)=>{const u=us[i%us.length],busy=u.act&&((u.act=='build'&&u.at&&u.at.site&&!u.at.dead)||(u.act=='dig'&&u.at&&u.at.pt));
+  if(busy)(u.bq=u.bq||[]).push(j);else{cmd(u);u.act=j.pt?'dig':'build';u.at=j;u.w=0}});
  say(!jobs.length?(poor?'Not enough oil':'Cannot build there'):(k=='trench'?'Digging ':'Building ')+jobs.length+(bad?' ('+bad+' blocked)':'')+(poor?' - ran out of oil':''));
  if(!keep)placing=null}
 function moveHQ(h,x,y){
- h.x=h.nd.x=x;h.y=h.nd.y=y;const gt=h.gate;gt.x=x+(x<W/2?80:-80);gt.y=y;gt.dormant=0;gt.a=[];gt.s=new Set();gt.i=N.length;N.push(gt);SG=null;
- const near=N.filter(n=>n!==gt&&!n.el&&!n.isl&&!n.dormant&&(n.y<RY)==(gt.y<RY)).sort((p,q)=>hyp(p.x-gt.x,p.y-gt.y)-hyp(q.x-gt.x,q.y-gt.y));
- if(near[0])lk(gt,near[0]);if(near[1]&&hyp(near[1].x-gt.x,near[1].y-gt.y)<450)lk(gt,near[1]);
- const g=TC.getContext('2d');g.drawImage(BASE,0,0);drawRoads(g);drawKits(g);for(const s of SC)g.drawImage(Assets.get(s[2]||'scorch',0),Math.round(s[0]-16),Math.round(s[1]-16))}
+ h.x=h.nd.x=x;h.y=h.nd.y=y;h.kx=Math.round(x-48);h.ky=Math.round(y-42);
+ const gt=h.gate,hx=x+(x<W/2?30:-30);gt.x=x+(x<W/2?80:-80);gt.y=y;gt.dormant=0;gt.a=[];gt.s=new Set();gt.i=N.length;N.push(gt);SG=null;
+ const hl=(p,q)=>{const w=hyp(p.x-q.x,p.y-q.y);p.a.push({n:q,w,hid:1});q.a.push({n:p,w,hid:1})};
+ const sn=nd(hx,y);hl(sn,gt);mkRoad({x:hx,y},gt,0).hq=1;
+ let b=null,bd=1e9;
+ for(const s of segs()){if(s.br||s.e.cut||s.e.hid||side((s.a.y+s.b.y)/2)!=side(gt.y))continue;const p=segD(gt.x,gt.y,s.a,s.b);if(p.d<bd){bd=p.d;b={s,x:p.x,y:p.y}}}
+ if(b){const A=b.s.a,B=b.s.b;let j;
+  if(hyp(A.x-b.x,A.y-b.y)<14)j=A;else if(hyp(B.x-b.x,B.y-b.y)<14)j=B;
+  else{A.a=A.a.filter(q=>q.n!=B);B.a=B.a.filter(q=>q.n!=A);j=nd(b.x,b.y);l2(A,j);l2(j,B)}
+  hl(gt,j);mkRoad(gt,j,0).hq=1}
+ SG=null}
 function airlift(f,x,y,list,msg){const sx=x<W/2?-140:W+140,sy=y+(y<RY?-160:160);HE.push({f,x:sx,y:sy,sx,sy,tx:x,ty:y,ang:Math.atan2(y-sy,x-sx),list,n:0,st:0,dt:0,k:0,sel:f==0,msg})}
 function updHeli(dt){for(let i=HE.length;i--;){const h=HE[i];h.k+=dt;
  if(h.st==0){const dx=h.tx-h.x,dy=h.ty-h.y,d=hyp(dx,dy),s=320*dt;h.ang=Math.atan2(dy,dx);if(d<=s){h.x=h.tx;h.y=h.ty;h.st=1;h.dt=.3}else{h.x+=dx/d*s;h.y+=dy/d*s}}
