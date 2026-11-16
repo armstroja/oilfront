@@ -26,6 +26,8 @@ const DEF={
  silo:{n:'Missile Silo',cost:450,spr:'missileSilo',hp:520,ter:'land',r:18,rng:1200,vis:260,silo:1,rate:18}};
 const LINE={sand:22,trap:26,trench:40,road:32};
 let MAP='desert';
+const ISLAND={x:1200,y:1200,rx:160,ry:72};
+const islandAt=(x,y)=>{const nx=(x-ISLAND.x)/ISLAND.rx,ny=(y-ISLAND.y)/ISLAND.ry;return Math.pow(Math.abs(nx),8)+Math.pow(Math.abs(ny),8)<=1.05};
 /* dense jungle canopy: sprite trees everywhere except around roads, settlements and rigs */
 function forest(g){const K=['treeBroad','treeOlive','treePalm','treeBroad','scrub'],ents=[...rigs,...towns,...hqs.filter(h=>h!==hqs[0])].map(e=>[e.x,e.y,e.isHQ?75:e.capital?105:e.t=='rig'?52:62]),sg=segs().filter(s=>!s.br);g.imageSmoothingEnabled=true;
  for(let y=10;y<W;y+=10)for(let x=10;x<W;x+=10){const jx=x+hrnd(x,y,1)*8-4,jy=y+hrnd(x,y,2)*8-4,m=vn(jx,jy,70,12)*.65+vn(jx,jy,20,13)*.35;if(m<.3)continue;
@@ -33,8 +35,8 @@ function forest(g){const K=['treeBroad','treeOlive','treePalm','treeBroad','scru
   if(!bad)for(const s of sg){if(segD(jx,jy,s.a,s.b).d<24){bad=1;break}}if(bad)continue;
   const n=K[hrnd(x,y,3)*5|0],cv=Assets.get(n,0),sc=(.6+hrnd(x,y,4)*.45+(m-.3)*.4)*(n=='scrub'?1.2:1);g.drawImage(cv,jx-cv.width*sc/2,jy-cv.height*sc/2,cv.width*sc,cv.height*sc)}
  g.imageSmoothingEnabled=false}
-/* the capital sits on a sandy island in the middle of the river; the N-S road is its causeway */
-function island(g){for(let y=1138;y<1262;y++)for(let x=1058;x<1342;x++){const nx=(x-1200)/136,ny=(y-1200)/56,d=Math.pow(Math.abs(nx),8)+Math.pow(Math.abs(ny),8)+(hrnd(x>>2,y>>2,5)-.5)*.2;if(d<1){g.fillStyle=d>.8?PAL.ground[4]:(hrnd(x>>2,y>>2,6)<.5?PAL.ground[2]:PAL.ground[3]);g.fillRect(x,y,1,1)}}for(const p of[[1160,1156],[1242,1156],[1162,1246],[1240,1246]]){g.imageSmoothingEnabled=true;g.drawImage(Assets.get(hrnd(p[0],p[1],1)<.5?'treePalm':'treeOlive',0),p[0]-12,p[1]-12,24,24);g.imageSmoothingEnabled=false}}
+/* the capital sits on a larger sandy island with separate north and south causeways */
+function island(g){for(let y=ISLAND.y-ISLAND.ry-4;y<=ISLAND.y+ISLAND.ry+4;y++)for(let x=ISLAND.x-ISLAND.rx-4;x<=ISLAND.x+ISLAND.rx+4;x++){const nx=(x-ISLAND.x)/ISLAND.rx,ny=(y-ISLAND.y)/ISLAND.ry,d=Math.pow(Math.abs(nx),8)+Math.pow(Math.abs(ny),8);if(islandAt(x,y)){g.fillStyle=d>.8?PAL.ground[4]:(hrnd(x>>2,y>>2,6)<.5?PAL.ground[2]:PAL.ground[3]);g.fillRect(x,y,1,1)}}for(const p of[[1148,1152],[1252,1152],[1148,1248],[1252,1248]]){g.imageSmoothingEnabled=true;g.drawImage(Assets.get(hrnd(p[0],p[1],1)<.5?'treePalm':'treeOlive',0),p[0]-12,p[1]-12,24,24);g.imageSmoothingEnabled=false}}
 const WATER=c=>{for(let y=1136;y<1264;y+=16)for(let x=0;x<W;x+=16)Assets.drawK(c,'water',0,x,y)};
 function applyMap(kind){MAP=kind;placeCap(kind=='snow'?1200:1000);WX.fog=kind=='snow'?.4:0;WX.sand=0;WX.kind='clear';WX.next=20;const g=TC.getContext('2d');g.clearRect(0,0,W,W);
  if(kind=='snow'){Terrain.jungle(g,W,W);forest(g);bridges.forEach(b=>{b.hp=0;b.rb=0})}
@@ -63,7 +65,8 @@ const lk=(a,b,br)=>{if(a==b||a.s.has(b))return;a.s.add(b);b.s.add(a);
 [...hqs,...rigs,...towns].forEach(e=>{if(e.isHQ){e.nd={x:e.x,y:e.y,a:[],s:new Set(),i:-1};const g=e.gate=nd(e.x+(e.x<W/2?80:-80),e.y);if(e.dormant)g.dormant=1;return}
  e.nd=nd(e.x,e.y);e.nd.R=e.r+14;if(Math.abs(e.y-RY)<80)e.nd.isl=1;if(e.t=='town'){e.nd.kit=1;e.nd.kw=48;e.nd.kh=42}});
 bridges.forEach(b=>{b.nN=nd(b.x,1060);b.nS=nd(b.x,1340);b.nN.R=b.nS.R=22});
-const HUBN=nd(1200,1200);HUBN.isl=1;const IN=nd(1200,1060),IS=nd(1200,1340);IN.R=IS.R=22;
+const HUBN=nd(ISLAND.x,ISLAND.y);HUBN.isl=1;
+const IN=nd(ISLAND.x,ISLAND.y-ISLAND.ry),IS=nd(ISLAND.x,ISLAND.y+ISLAND.ry);IN.R=IS.R=22;
 var SG=null;
 function buildRoads(){SG=null;const keep=N.filter(n=>!n.el&&!n.dormant);N.length=0;keep.forEach((n,i)=>{n.i=i;n.a=[];n.s=new Set();N.push(n)});
  bridges.forEach(b=>lk(b.nN,b.nS,b));lk(IN,HUBN);lk(HUBN,IS);for(const r of rigs)if(r.nd.isl)lk(HUBN,r.nd);
@@ -127,11 +130,11 @@ function launchBarrage(silo,x,y){if(silo.cd>0){say('Missile Silo reloading');ret
 function roadHit(p){const r=roadAt(p.tx,p.ty);if(!r||r.e.cut||hyp(r.x-p.tx,r.y-p.ty)>p.spl*.5+6)return;const e=r.e;if(T-(e.ht||-99)>25)e.hn=0;e.ht=T;if(++e.hn>=3){const re=e.n.a.find(q=>q.n==r.n);e.cut=re.cut=1;e.cx=re.cx=r.x;e.cy=re.cy=r.y;fx(r.x,r.y,40);if(vi(0,r.x,r.y)>0)say('A road was blown apart!')}}
 function impact(p){fx(p.tx,p.ty,p.spl?p.spl*.7:9);if(p.spl)roadHit(p);if(p.spl){TC.getContext('2d').drawImage(Assets.get('scorch',0),Math.round(p.tx-16),Math.round(p.ty-16));SC.push([p.tx,p.ty]);if(SC.length>400)SC.shift()}if(p.spl){for(const e of E.slice())if(e.f!=p.f&&e.hp>0){const d=hyp(e.x-p.tx,e.y-p.ty)-(e.t=='hq'?e.r:0);if(d<p.spl)hurt(e,p.d*mult(p.a,e.t)*(1-d/p.spl*.5))}}else if(p.tg&&p.tg.hp>0)hurt(p.tg,p.d*mult(p.a,p.tg.t));
 if(p.bt)hurtB(p.bt,p.d*(p.ar?1.6:p.a=='tank'?1.2:p.a=='scout'?.2:.8))}
-const isl=(x,y)=>Math.abs(x-1200)<16||(x>1064&&x<1336&&y>1144&&y<1256),isW=(x,y)=>MAP!='snow'&&Math.abs(y-RY)<60&&!isl(x,y)&&!bridges.some(b=>b.hp>0&&Math.abs(x-b.x)<40);
+const isl=islandAt,isW=(x,y)=>MAP!='snow'&&Math.abs(y-RY)<60&&!isl(x,y)&&!bridges.some(b=>b.hp>0&&Math.abs(x-b.x)<40);
 const side=y=>y<RY?0:1;
 function plan(x,y,tx,ty){const p=[],IS=(a,b)=>MAP!='snow'&&isl(a,b);
- if(IS(tx,ty)&&!IS(x,y))return[{x:1200,y:y<RY?1100:1300},{x:1200,y:1200},{x:tx,y:ty}];
- if(IS(x,y)&&!IS(tx,ty)){const wy=ty<RY?1100:1300;return[{x:1200,y:1200},{x:1200,y:wy},{x:tx,y:ty}]}
+ if(IS(tx,ty)&&!IS(x,y))return[{x:ISLAND.x,y:y<RY?ISLAND.y-ISLAND.ry:ISLAND.y+ISLAND.ry},{x:ISLAND.x,y:ISLAND.y},{x:tx,y:ty}];
+ if(IS(x,y)&&!IS(tx,ty)){const wy=ty<RY?ISLAND.y-ISLAND.ry:ISLAND.y+ISLAND.ry;return[{x:ISLAND.x,y:ISLAND.y},{x:ISLAND.x,y:wy},{x:tx,y:ty}]}
 if(side(y)!=side(ty)){let bt=null,bd=1e9;for(const b of bridges)if(b.hp>0){const d=hyp(b.x-x,b.y-y)+hyp(b.x-tx,b.y-ty);if(d<bd){bd=d;bt=b}}
  const s=side(y);if(bt)p.push({x:bt.x,y:s?1330:1070},{x:bt.x,y:s?1070:1330});else return [{x,y:s?1290:1110}]}p.push({x:tx,y:ty});return p}
 const RB=t=>t=='tank'||t=='art';
