@@ -1,0 +1,29 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Oil Front - 5 Faction RTS</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px)}
+html,body{margin:0;height:100%;background:#10140f;color:#dfe6d2;font:13px/1.3 "Courier New",monospace;overflow:hidden;user-select:none}
+canvas{display:block}#c{position:fixed;inset:0;cursor:crosshair}
+#top{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;display:flex;gap:22px;padding:6px 12px;background:rgba(10,14,9,.8);pointer-events:none;font-size:14px}
+#top b{color:#e8b04a}
+#bot{position:fixed;bottom:0;left:0;right:0;display:flex;gap:12px;align-items:flex-end;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));background:rgba(10,14,9,.85)}
+#info{flex:1;min-width:140px;max-width:260px}#btns{display:flex;gap:6px;flex-wrap:wrap;flex:2}
+#btns button{background:#1d2619;color:#dfe6d2;border:1px solid #4d5d3f;padding:6px 8px;font:inherit;cursor:pointer;border-radius:3px}
+#btns button:disabled{opacity:.4}#btns button:focus-visible{outline:2px solid #e8b04a}
+#mm{width:150px;height:150px;border:1px solid #4d5d3f;background:#000;cursor:pointer}
+#msg{position:fixed;top:44px;left:0;right:0;text-align:center;pointer-events:none;color:#e8b04a;font-size:15px;text-shadow:0 0 4px #000}
+#end{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);font-size:44px}
+#dm{position:fixed;left:10px;bottom:190px;display:none;flex-direction:column;gap:4px;padding:8px;background:rgba(10,14,9,.92);border:1px solid #4d5d3f;border-radius:3px;font-size:12px;max-height:60vh;overflow:auto}
+#dm button{background:#1d2619;color:#dfe6d2;border:1px solid #4d5d3f;padding:5px 8px;font:inherit;cursor:pointer;border-radius:3px;text-align:left}
+#dm button:disabled{opacity:.4}
+#mapMenu{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.82);z-index:5}
+#mapMenu .panel{min-width:280px;padding:24px;background:#172016;border:1px solid #71835d;box-shadow:0 0 30px #000;text-align:center}
+#mapMenu h1{margin:0 0 8px;color:#e8b04a;font-size:24px}
+#mapMenu p{margin:0 0 18px;color:#b9c5ad}
+#mapMenu button{display:block;width:100%;margin:8px 0;background:#263522;color:#dfe6d2;border:1px solid #71835d;padding:10px;font:inherit;cursor:pointer;border-radius:3px}
+#mapMenu button:hover,#mapMenu button:focus-visible{background:#34482d;border-color:#e8b04a;outline:none}
+</style></head><body>
+<canvas id="c"></canvas><div id="top"></div><div id="msg"></div><div id="end"></div><div id="dm"></div>
+<div id="bot"><div id="info"></div><div id="btns"></div><canvas id="mm" width="150" height="150"></canvas></div>
+<div id="mapMenu"><div class="panel"><h1>OIL FRONT</h1><p>Choose a battlefield</p><button data-map="desert">Desert Front</button><button data-map="snow">Vietnam Jungle</button></div></div>
+<script src="sprites.js"></script>
+<script src="engine.js"></script></body></html>
