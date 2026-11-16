@@ -64,10 +64,10 @@ const finish=(cv,seed)=>{const g=cv.getContext('2d'),w=cv.width,h=cv.height,im=g
  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4;if(d[i+3]<200)continue;let f=1;if(al(x-1,y)<200||al(x+1,y)<200||al(x,y-1)<200||al(x,y+1)<200)f=.55;else{const r=hrnd(x,y,seed);f=r<.07?.86:r>.95?1.12:1}for(let k=0;k<3;k++)o[i+k]=d[i+k]*f}
  im.data.set(o);g.putImageData(im,0,0)};
 
-/* ===== Visual intensity upgrade: FX.enhance toggles the stronger finish pass (outline, top-lit bevel, contrast) and heavier shadows ===== */
-const FX={enhance:true};
+/* ===== Visual intensity upgrade: AssetFX.enhance toggles the stronger finish pass (outline, top-lit bevel, contrast) and heavier shadows ===== */
+const AssetFX={enhance:true};
 
-const finish2=(cv,seed)=>{const g=cv.getContext('2d'),w=cv.width,h=cv.height,im=g.getImageData(0,0,w,h),d=im.data,o=new Uint8ClampedArray(d),
+AssetFX.finish=(cv,seed)=>{const g=cv.getContext('2d'),w=cv.width,h=cv.height,im=g.getImageData(0,0,w,h),d=im.data,o=new Uint8ClampedArray(d),
  al=(x,y)=>x<0||y<0||x>=w||y>=h?0:d[(y*w+x)*4+3];
  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4;if(d[i+3]<200)continue;
   const edge=al(x-1,y)<200||al(x+1,y)<200||al(x,y-1)<200||al(x,y+1)<200;let f=1;
@@ -276,9 +276,9 @@ const charOf=(id,seed)=>{const b=NS[id];NS[id+'Wreck']={...b,team:0,draw(c,t,td)
 for(const k in NS){NS[k].hr=1;NS[k].k=.5;S[k]=NS[k]}
 const Town={trees(c,x,y,r=1){const n=hrnd(x,y,1)<.5?'treeBroad':'treeOlive',sc=.1+.15*r,cv=Assets.get(n,0);c.imageSmoothingEnabled=true;c.drawImage(cv,x-16*sc,y-16*sc,32*sc,32*sc);c.imageSmoothingEnabled=false}};
 const Assets={cache:{},
- get(name,team=0){const s=S[name],k=(FX.enhance?'e:':'')+name+(s.team?team:'');if(this.cache[k])return this.cache[k];const sp=document.createElement('canvas');sp.width=s.w;sp.height=s.h;const t=TEAMS[team][1];s.draw(sp.getContext('2d'),t,shade(t,.65));if(s.hr&&!s.raw)(FX.enhance?finish2:finish)(sp,name.length*7+team);
+ get(name,team=0){const s=S[name],k=(AssetFX.enhance?'e:':'')+name+(s.team?team:'');if(this.cache[k])return this.cache[k];const sp=document.createElement('canvas');sp.width=s.w;sp.height=s.h;const t=TEAMS[team][1];s.draw(sp.getContext('2d'),t,shade(t,.65));if(s.hr&&!s.raw)(AssetFX.enhance?AssetFX.finish:finish)(sp,name.length*7+team);
   const cv=document.createElement('canvas');cv.width=s.w;cv.height=s.h;const g=cv.getContext('2d');
-  if(s.shadow){const m=document.createElement('canvas');m.width=s.w;m.height=s.h;const q=m.getContext('2d');q.drawImage(sp,0,0);q.globalCompositeOperation='source-in';q.fillStyle='rgba(0,0,0,'+(FX.enhance?.5:.35)+')';q.fillRect(0,0,s.w,s.h);g.drawImage(m,-s.shadow,s.shadow)}
+  if(s.shadow){const m=document.createElement('canvas');m.width=s.w;m.height=s.h;const q=m.getContext('2d');q.drawImage(sp,0,0);q.globalCompositeOperation='source-in';q.fillStyle='rgba(0,0,0,'+(AssetFX.enhance?.5:.35)+')';q.fillRect(0,0,s.w,s.h);g.drawImage(m,-s.shadow,s.shadow)}
   g.drawImage(sp,0,0);return this.cache[k]=cv},
  draw(ctx,name,team,x,y,ang=0){const cv=this.get(name,team);ctx.imageSmoothingEnabled=false;if(!ang)return ctx.drawImage(cv,x,y);ctx.save();ctx.translate(x+cv.width/2,y+cv.height/2);ctx.rotate(ang);ctx.drawImage(cv,-cv.width/2,-cv.height/2);ctx.restore()},
  drawK(ctx,name,team,x,y){const cv=this.get(name,team);ctx.imageSmoothingEnabled=true;ctx.drawImage(cv,x,y,cv.width/2,cv.height/2);ctx.imageSmoothingEnabled=false}};
@@ -295,6 +295,7 @@ Assets.hasState=(name,state)=>Assets.stateOf(name,state)!==name;
 Assets.drawState=(ctx,name,team,x,y,ang=0,state)=>Assets.draw(ctx,Assets.stateOf(name,state),team,x,y,ang);
 
 /* ===== Intensity kit: damaged variants, fire, smoke, blasts, muzzle flashes, tracer, track and rotor frames ===== */
+(()=>{
 /* ---- Damaged ("Dmg") variants ---- */
 const flameS=(c,x,y,hg,s)=>{for(let j=0;j<hg;j++){const hw=Math.max(0,Math.round((hg-j)*.32*(.8+hrnd(j,s,1)*.4))),q=j/hg,col=q<.3?'#fff6d0':q<.55?PAL.flash:q<.85?PAL.fire:'#b8431c';rect(c,x-hw,y-j,hw*2+1,1,col)}
  for(let k=0;k<3;k++)disc(c,x+(k&1)-1,Math.max(2,y-hg-2-k*3),1+(k>>1),'rgba(52,48,44,'+(.6-k*.13).toFixed(2)+')')};
@@ -344,3 +345,4 @@ S.tracer={w:4,h:14,draw(c){for(let j=0;j<14;j++)rect(c,1,j,2,1,'rgba(255,220,120
 /* ---- Helicopter rotor spin frames (4) ---- */
 for(let k=0;k<4;k++)S['heliRotor'+k]={w:24,h:24,draw(c){disc(c,12,12,10,'rgba(255,255,255,.05)');
  for(const a of [k*.4,k*.4+1.571])line(c,Math.round(12-Math.cos(a)*10),Math.round(12-Math.sin(a)*10),Math.round(12+Math.cos(a)*10),Math.round(12+Math.sin(a)*10),'rgba(25,25,25,.6)');disc(c,12,12,1,PAL.lo)}};
+})();
