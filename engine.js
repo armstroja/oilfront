@@ -26,12 +26,18 @@ const DEF={
  silo:{n:'Missile Silo',cost:450,spr:'missileSilo',hp:520,ter:'land',r:18,rng:1200,vis:260,silo:1,rate:18}};
 const LINE={sand:22,trap:26,trench:40,road:32};
 let MAP='desert';
-/* dense jungle canopy: sprite trees everywhere except around roads, settlements and rigs */
-function forest(g){const K=['treeBroad','treeOlive','treePalm','treeBroad','scrub'],ents=[...rigs,...towns,...hqs.filter(h=>h!==hqs[0])].map(e=>[e.x,e.y,e.isHQ?75:e.capital?105:e.t=='rig'?52:62]),sg=segs().filter(s=>!s.br);g.imageSmoothingEnabled=true;
- for(let y=10;y<W;y+=10)for(let x=10;x<W;x+=10){const jx=x+hrnd(x,y,1)*8-4,jy=y+hrnd(x,y,2)*8-4,m=vn(jx,jy,70,12)*.65+vn(jx,jy,20,13)*.35;if(m<.3)continue;
-  let bad=0;for(const e of ents)if(Math.abs(jx-e[0])<e[2]&&Math.abs(jy-e[1])<e[2]){bad=1;break}
-  if(!bad)for(const s of sg){if(segD(jx,jy,s.a,s.b).d<24){bad=1;break}}if(bad)continue;
-  const n=K[hrnd(x,y,3)*5|0],cv=Assets.get(n,0),sc=(.6+hrnd(x,y,4)*.45+(m-.3)*.4)*(n=='scrub'?1.2:1);g.drawImage(cv,jx-cv.width*sc/2,jy-cv.height*sc/2,cv.width*sc,cv.height*sc)}
+/* Vietnam's forest mask is shared by rendering and movement so the canopy is impassable. */
+const forestEntities=()=>[...rigs,...towns,...hqs.filter(h=>h!==hqs[0])].map(e=>[e.x,e.y,e.isHQ?75:e.capital?105:e.t=='rig'?52:62]);
+function forestAt(x,y){
+ if(MAP!='snow'||drv(x,y))return 0;
+ for(const e of forestEntities())if(Math.abs(x-e[0])<e[2]&&Math.abs(y-e[1])<e[2])return 0;
+ const m=vn(x,y,70,12)*.65+vn(x,y,20,13)*.35;
+ return m>=.46;
+}
+function forest(g){const K=['treeBroad','treeOlive','treePalm','treeBroad','scrub'],ents=forestEntities(),sg=segs().filter(s=>!s.br);g.imageSmoothingEnabled=true;
+ for(let y=10;y<W;y+=10)for(let x=10;x<W;x+=10){const jx=x+hrnd(x,y,1)*8-4,jy=y+hrnd(x,y,2)*8-4;if(!forestAt(jx,jy))continue;
+  let bad=0;for(const s of sg){if(segD(jx,jy,s.a,s.b).d<24){bad=1;break}}if(bad)continue;
+  const m=vn(jx,jy,70,12)*.65+vn(jx,jy,20,13)*.35,n=K[hrnd(x,y,3)*5|0],cv=Assets.get(n,0),sc=(.6+hrnd(x,y,4)*.45+(m-.46)*.4)*(n=='scrub'?1.2:1);g.drawImage(cv,jx-cv.width*sc/2,jy-cv.height*sc/2,cv.width*sc,cv.height*sc)}
  g.imageSmoothingEnabled=false}
 /* the capital sits on a sandy island in the middle of the river; the N-S road is its causeway */
 function island(g){for(let y=1138;y<1262;y++)for(let x=1058;x<1342;x++){const nx=(x-1200)/136,ny=(y-1200)/56,d=Math.pow(Math.abs(nx),8)+Math.pow(Math.abs(ny),8)+(hrnd(x>>2,y>>2,5)-.5)*.2;if(d<1){g.fillStyle=d>.8?PAL.ground[4]:(hrnd(x>>2,y>>2,6)<.5?PAL.ground[2]:PAL.ground[3]);g.fillRect(x,y,1,1)}}for(const p of[[1160,1156],[1242,1156],[1162,1246],[1240,1246]]){g.imageSmoothingEnabled=true;g.drawImage(Assets.get(hrnd(p[0],p[1],1)<.5?'treePalm':'treeOlive',0),p[0]-12,p[1]-12,24,24);g.imageSmoothingEnabled=false}}
@@ -170,7 +176,8 @@ function stepMove(u,dt){const p=u.path[0];if(!p)return;
  if(rb){/* road-bound: may leave sand to reach a road, but never drive off one (slides along it instead); enemy tank traps block the way */
   if(drv(u.x,u.y)&&!drv(nx,ny)){for(const[ax,ay]of[[nx,u.y],[u.x,ny]])if(drv(ax,ay)&&hyp(p.x-ax,p.y-ay)<d-.01){u.x=ax;u.y=ay;break}return}
   }
- const bk=blockAt(u,nx,ny);if(bk){if(bk.f!=u.f&&ST[u.t].dmg&&!u.tgt){u.tgt=bk;u.auto=1}if(!rb){for(const[ax,ay]of[[nx,u.y],[u.x,ny]])if(!blockAt(u,ax,ay)&&!(isW(ax,ay)&&!isW(u.x,u.y))){u.x=ax;u.y=ay;break}}return}
+ if(forestAt(nx,ny))return;
+ const bk=blockAt(u,nx,ny);if(bk){if(bk.f!=u.f&&ST[u.t].dmg&&!u.tgt){u.tgt=bk;u.auto=1}if(!rb){for(const[ax,ay]of[[nx,u.y],[u.x,ny]])if(!forestAt(ax,ay)&&!blockAt(u,ax,ay)&&!(isW(ax,ay)&&!isW(u.x,u.y))){u.x=ax;u.y=ay;break}}return}
  u.x=nx;u.y=ny}
 /* tank traps stop every vehicle; checkpoints stop only enemy vehicles */
 function blockAt(u,x,y){if(u.t=='inf')return null;
