@@ -129,9 +129,9 @@ function impact(p){fx(p.tx,p.ty,p.spl?p.spl*.7:9);if(p.spl)roadHit(p);if(p.spl){
 if(p.bt)hurtB(p.bt,p.d*(p.ar?1.6:p.a=='tank'?1.2:p.a=='scout'?.2:.8))}
 const isl=(x,y)=>Math.abs(x-1200)<16||(x>1064&&x<1336&&y>1144&&y<1256),isW=(x,y)=>MAP!='snow'&&Math.abs(y-RY)<60&&!isl(x,y)&&!bridges.some(b=>b.hp>0&&Math.abs(x-b.x)<40);
 const side=y=>y<RY?0:1;
-function plan(x,y,tx,ty){const p=[],IS=(a,b)=>MAP!='snow'&&Math.abs(a-1200)<140&&Math.abs(b-RY)<56;
+function plan(x,y,tx,ty){const p=[],IS=(a,b)=>MAP!='snow'&&isl(a,b);
  if(IS(tx,ty)&&!IS(x,y))return[{x:1200,y:y<RY?1100:1300},{x:1200,y:1200},{x:tx,y:ty}];
- if(IS(x,y)&&!IS(tx,ty)){const wy=ty<RY?1100:1300;return[{x:1200,y:1200},{x:1200,y:wy},...plan(1200,wy,tx,ty)]}
+ if(IS(x,y)&&!IS(tx,ty)){const wy=ty<RY?1100:1300;return[{x:1200,y:1200},{x:1200,y:wy},{x:tx,y:ty}]}
 if(side(y)!=side(ty)){let bt=null,bd=1e9;for(const b of bridges)if(b.hp>0){const d=hyp(b.x-x,b.y-y)+hyp(b.x-tx,b.y-ty);if(d<bd){bd=d;bt=b}}
  const s=side(y);if(bt)p.push({x:bt.x,y:s?1330:1070},{x:bt.x,y:s?1070:1330});else return [{x,y:s?1290:1110}]}p.push({x:tx,y:ty});return p}
 const RB=t=>t=='tank'||t=='art';
@@ -175,7 +175,7 @@ function turret(e,dt){if(e.drop>0){e.drop-=dt;return}prod(e,dt);if(e.t=='town'&&
  for(const u of E)if(u.u&&u.f==e.f&&u.t!='inf'&&u.hp<u.mhp&&hyp(u.x-e.x,u.y-e.y)<(hq?110:120))u.hp=Math.min(u.mhp,u.hp+(hq?4:6)*dt);
  if(e.cd<=0){const t=find(e,s.rng);if(t)fire(e,t,s,'tank')}}
 function unitAI(u,dt){const s=ST[u.t];if(u.drop>0){u.drop-=dt;return}if(u.t=='truck')return truckStep(u,dt);
- if(!u.act&&u.bq&&u.bq.length){const n=u.bq.shift();if(!n.dead&&(n.site||n.pt)){u.act=n.site?'build':'dig';u.at=n;u.w=0}}
+ if(!u.act&&u.bq&&u.bq.length){const n=u.bq.shift();if(!n.dead&&(n.site||n.pt)){u.act=n.road?'road':n.site?'build':'dig';u.at=n;u.w=0}}
  if(u.t=='blayer'&&!u.act&&!u.path.length&&T>(u.sc||0)){u.sc=T+1;const b=bridges.find(b=>b.hp<=0&&hyp(b.x-u.x,RY-u.y)<420);if(b){u.act='rep';u.at=b}}
  if(u.act){const t=u.at,gone=!t||(t.hp<=0&&!t.isB&&t.u!==undefined&&t.t!='rig'&&t.t!='town'&&t.t!='hq')||(u.act=='gar'&&t.f!=u.f)||(u.act=='cap'&&t.f==u.f)||t.dead||((u.act=='build'||u.act=='road')&&!t.site);
   if(gone){u.act=null;u.at=null}else{const tx=t.x,ty=t.isB?(side(u.y)?1295:1105):t.y,d=hyp(tx-u.x,ty-u.y),need=u.act=='cap'?30:t.isB?30:u.act=='dig'?70:t.def?t.r+24:44;
@@ -233,15 +233,15 @@ const gband=(x,y)=>{const X=(x|0)>>2<<2,Y=(y|0)>>2<<2;let v=.62*vn(X,Y,72,1)+.3*
 const DS=1.5;
 function placeCheck(k,x,y){const d=DEF[k],r=(d.r||8)*DS;let rt=null;
  if(x<50||x>W-50||y<50||y>W-50)return{ok:0,m:'Out of bounds',x,y};
- if(d.ter!='road'&&!d.anyGround&&(isW(x,y)||(MAP!='snow'&&Math.abs(y-RY)<80)))return{ok:0,m:'Cannot build on the river',x,y};
+ if(d.ter!='road'&&!isl(x,y)&&(isW(x,y)||(MAP!='snow'&&Math.abs(y-RY)<80)))return{ok:0,m:'Cannot build on the river',x,y};
  if(d.ter=='road'){if(isW(x,y)||!drv(x,y))return{ok:0,m:'Tank traps go on roads',x,y};const q=roadAt(x,y);if(q&&hyp(q.x-x,q.y-y)<16){x=q.x;y=q.y;rt=Math.atan2(q.e.n.y-q.n.y,q.e.n.x-q.n.x)}}
- else if(!d.anyGround){if(drv(x,y))return{ok:0,m:'Cannot build on a road',x,y};if(d.ter=='sand'&&gband(x,y)<3)return{ok:0,m:'Needs bare sand (the pale ground)',x,y}}
+ else {if(drv(x,y))return{ok:0,m:'Cannot build on a road',x,y};if(d.ter=='sand'&&gband(x,y)<3)return{ok:0,m:'Needs bare sand (the pale ground)',x,y}}
  if(d.ter!='road'){for(const e of rigs)if(hyp(e.x-x,e.y-y)<24+r+6)return{ok:0,m:'Too close to an oil rig',x,y};
   for(const e of ALLT){const w=e.capital?(e.kw||160):96,h=e.capital?(e.kh||128):84;if(x>e.kx-r&&x<e.kx+w+r&&y>e.ky-r&&y<e.ky+h+r)return{ok:0,m:'Too close to a town',x,y}}}
  for(const e of E)if(e.def&&hyp(e.x-x,e.y-y)<(e.r+r)*.7)return{ok:0,m:'Something is in the way',x,y};
  return{ok:1,x,y,rot:rt}}
 function mkDef(k,f,x,y,rot,site){const d=DEF[k],e=mk({t:'def',def:1,k,f,x,y,r:(d.r||8)*DS,hp:site?d.hp*.25:d.hp,mhp:d.hp,s:1,rot:rot||0,gang:-Math.PI/2,site:site?1:0,prog:0,bt:d.bt||Math.max(1,d.cost/50),vis:d.vis||(d.rng?d.rng+60:150)});if(!site)finishDef(e);return e}
-function roadCheck(x,y){return x>=50&&x<=W-50&&y>=50&&y<=W-50&&!isW(x,y)&&(MAP=='snow'||Math.abs(y-RY)>=80)}
+function roadCheck(x,y){return x>=50&&x<=W-50&&y>=50&&y<=W-50&&!isW(x,y)&&(MAP=='snow'||Math.abs(y-RY)>=80||isl(x,y))}
 function mkRoad(a,b,site=1){const r={road:1,site:site?1:0,prog:0,bt:1.6,x:(a.x+b.x)/2,y:(a.y+b.y)/2,a:{x:a.x,y:a.y},b:{x:b.x,y:b.y}};MRS.push(r);return r}
 function finishDef(e){const d=DEF[e.k];e.site=0;e.prog=1;e.hp=e.mhp;if(d.cover)e.cover=d.cover;if(d.rng||d.blk)e.gun=1}
 function defTarget(e,d){let b=null,bd=d.rng+1;for(const t of E){if(t.f<0||t.f==e.f||t.hp<=0||t.drop>0)continue;
@@ -254,11 +254,13 @@ function defAI(e,dt){const d=DEF[e.k];
  if(T>(e.sc||0)){e.sc=T+.25;e.ft=defTarget(e,d)}
  const t=e.ft;if(!t)return;if(t.hp<=0||t.dead||hyp(t.x-e.x,t.y-e.y)>d.rng+(t.u?0:t.r)){e.ft=null;return}
  e.gang=Math.atan2(t.y-e.y,t.x-e.x);if(e.cd<=0)fire(e,t,d,d.a)}
+function assignBuild(u,job,act){const busy=u.act&&((u.act=='build'||u.act=='road')&&u.at&&u.at.site&&!u.at.dead);if(busy)(u.bq=u.bq||[]).push(job);else{cmd(u);u.act=act;u.at=job;u.w=0}}
 function place(x,y,keep){const k=placing.k,d=DEF[k],us=sel.filter(u=>u.t=='eng'&&u.f==0);
  if(!us.length){say('Select an engineer to build');placing=null;return}
  const c=placeCheck(k,x,y,placing.rot);if(!c.ok){say(c.m);return}
  if(F[0].oil<d.cost){say('Not enough oil');return}
- F[0].oil-=d.cost;const st=mkDef(k,0,c.x,c.y,c.rot!=null?c.rot:placing.rot*Math.PI/2,1);for(const u of us){if(u.act=='build'&&u.at&&u.at.site&&!u.at.dead){(u.bq=u.bq||[]).push(st)}else{cmd(u);u.act='build';u.at=st}}
+ F[0].oil-=d.cost;const st=mkDef(k,0,c.x,c.y,c.rot!=null?c.rot:placing.rot*Math.PI/2,1);
+ const u=us.find(e=>e.act=='build'&&e.at&&e.at.site&&!e.at.dead)||us[0];assignBuild(u,st,'build');
  fx(c.x,c.y,10);say('Building '+d.n);if(!keep)placing=null}
 function drawD(g,e,tm,a){const d=DEF[e.k];g.globalAlpha=a*(e.site?.5:1);
  if(d.spr)spr(g,e.k=='silo'&&e.cd>d.rate-3?'missileSiloOpen':d.spr,tm,e.x,e.y,e.rot||0,DS);else{spr(g,d.base,tm,e.x,e.y,0,DS);spr(g,d.gun,tm,e.x,e.y,(e.gang==null?-Math.PI/2:e.gang)+Math.PI/2,DS)}g.globalAlpha=1}
@@ -341,13 +343,13 @@ function drawLine(g){if(!placing)return 0;const k=placing.k,sp=LINE[k];if(!sp)re
  return 1}
 function placeDrag(a,b,keep){const k=placing.k,sp=LINE[k],us=sel.filter(u=>u.t=='eng'&&u.f==0);
  if(!us.length){say('Select an engineer to build');placing=null;return}
- const ls=sp?linePts(a,b,sp):{p:[b],ang:0,n:0};if(k!='trench'&&!ls.n)return place(b.x,b.y,keep);
+ const ls=sp?linePts(a,b,sp):{p:[b],ang:0,n:0};
  const d=DEF[k]||{},jobs=[];let bad=0,poor=0;
- if(k=='road'){if(!roadCheck(a.x,a.y)||!roadCheck(b.x,b.y)){say('Makeshift roads need dry ground');return}if(F[0].oil<15){say('Not enough oil');return}F[0].oil-=15;const r=mkRoad(a,b,1),u=us[0];cmd(u);u.act='road';u.at={x:(a.x+b.x)/2,y:(a.y+b.y)/2,road:r,site:1};u.at=r;u.w=0;say('Building makeshift road');if(!keep)placing=null;return}
+ if(k=='road'){if(!ls.n){say('Drag to build a makeshift road');return}if(!roadCheck(a.x,a.y)||!roadCheck(b.x,b.y)){say('Makeshift roads need dry ground');return}if(F[0].oil<15){say('Not enough oil');return}F[0].oil-=15;const r=mkRoad(a,b,1),u=us.find(e=>e.act=='road'&&e.at&&e.at.site&&!e.at.dead)||us[0];assignBuild(u,r,'road');say('Building makeshift road');if(!keep)placing=null;return}
+ if(k!='trench'&&!ls.n)return place(b.x,b.y,keep);
  for(const q of ls.p){if(k=='trench'){if(isW(q.x,q.y)||(MAP!='snow'&&Math.abs(q.y-RY)<80)){bad++;continue}jobs.push({x:q.x,y:q.y,t:'pt',pt:1,ang:ls.ang});continue}
   const c=placeCheck(k,q.x,q.y);if(!c.ok){bad++;continue}if(F[0].oil<d.cost){poor=1;break}F[0].oil-=d.cost;jobs.push(mkDef(k,0,c.x,c.y,k=='trap'?0:ls.ang,1))}
- jobs.forEach((j,i)=>{const u=us[i%us.length],busy=u.act&&((u.act=='build'&&u.at&&u.at.site&&!u.at.dead)||(u.act=='dig'&&u.at&&u.at.pt));
-  if(busy)(u.bq=u.bq||[]).push(j);else{cmd(u);u.act=j.pt?'dig':'build';u.at=j;u.w=0}});
+ jobs.forEach((j,i)=>{const u=us[i%us.length];assignBuild(u,j,j.pt?'dig':'build')});
  say(!jobs.length?(poor?'Not enough oil':'Cannot build there'):(k=='trench'?'Digging ':'Building ')+jobs.length+(bad?' ('+bad+' blocked)':'')+(poor?' - ran out of oil':''));
  if(!keep)placing=null}
 function moveHQ(h,x,y){
