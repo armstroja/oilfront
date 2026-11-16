@@ -14,7 +14,7 @@ route=function(a,b){const D=new Map([[a,0]]),pv=new Map(),H=[[0,a]],dn=new Set()
 
 /* ---------- sound (synthesized) ---------- */
 addEventListener('pointerdown',()=>{if(!XT.ac){XT.ac=new(window.AudioContext||window.webkitAudioContext)()}XT.ac.resume()});
-function sfx(k,x,y){const a=XT.ac;if(!a||XT.mute||T-(XT['s'+k]||-9)<.06)return;if(x!=null&&vi(0,x,y)<1)return;XT['s'+k]=T;
+function sfx(k,x,y){const a=XT.ac;if(!a||XT.mute||T-(XT['s'+k]||-9)<.06)return;if(x!=null&&vi(MYF,x,y)<1)return;XT['s'+k]=T;
  const d=k=='boom'?.5:.12,n=a.sampleRate*d|0,b=a.createBuffer(1,n,a.sampleRate),c=b.getChannelData(0);
  for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*Math.pow(1-i/n,k=='boom'?2:4);
  const s=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();f.type='lowpass';f.frequency.value=k=='boom'?500:2200;g.gain.value=k=='boom'?.5:.15;
@@ -27,12 +27,12 @@ const _impact=impact;impact=function(p){if(p.spl)sfx('boom',p.tx,p.ty);_impact(p
 const _kill=kill;kill=function(e,q){if(!q&&!e.dead)sfx('boom',e.x,e.y);_kill(e,q)};
 
 /* ---------- under-attack alerts + armor upgrade ---------- */
-const _hurt=hurt;hurt=function(e,d){if(e.f==0&&(e.u||e.def)&&e.hp>0&&T-XT.al>6){XT.al=T;XT.pings.push({x:e.x,y:e.y,t:T});say((e.u?ST[e.t].n:DEF[e.k].n)+' under attack!')}
- if(e.f==0&&e.u)d*=1-.15*XT.arm;_hurt(e,d)};
+const _hurt=hurt;hurt=function(e,d){if(e.f==MYF&&(e.u||e.def)&&e.hp>0&&T-XT.al>6){XT.al=T;XT.pings.push({x:e.x,y:e.y,t:T});say((e.u?ST[e.t].n:DEF[e.k].n)+' under attack!')}
+ if(e.f==MYF&&e.u)d*=1-.15*XT.arm;_hurt(e,d)};
 const _mini=mini;mini=function(){_mini();for(const p of XT.pings){const a=1-(T-p.t)/4;if(a<=0)continue;MX.strokeStyle='rgba(255,80,60,'+a+')';MX.lineWidth=2;MX.beginPath();MX.arc(p.x*150/W,p.y*150/W,3+(T-p.t)*6,0,6.28);MX.stroke()}XT.pings=XT.pings.filter(p=>T-p.t<4)};
 
 /* ---------- rally points + attack-move (Ctrl + right click) ---------- */
-C.addEventListener('contextmenu',e=>{if(!e.ctrlKey||placing)return;const p=w2(e.clientX,e.clientY),hq=sel.find(s=>s.f==0&&s.t=='town'),us=sel.filter(u=>u.u&&u.f==0&&u.t!='truck');
+C.addEventListener('contextmenu',e=>{if(!e.ctrlKey||placing)return;const p=w2(e.clientX,e.clientY),hq=sel.find(s=>s.f==MYF&&s.t=='town'),us=sel.filter(u=>u.u&&u.f==MYF&&u.t!='truck');
  if(hq){e.preventDefault();e.stopImmediatePropagation();hq.rally={x:p.x,y:p.y};say('Rally point set');return}
  if(us.length){e.preventDefault();e.stopImmediatePropagation();us.forEach(u=>{cmd(u);u.am={x:p.x,y:p.y};go(u,p.x,p.y,20)});say('Attack-move')}},true);
 const _prod=prod;prod=function(e,dt){const n=E.length;_prod(e,dt);if(e.rally&&E.length>n){const u=E[E.length-1];if(u.u)go(u,e.rally.x+rnd(-30,30),e.rally.y+rnd(-30,30))}};
@@ -49,8 +49,8 @@ const _ai=aiThink;aiThink=function(f){const me=F[f],hq=hqs[f],ptw=ALLT.find(x=>x
 /* ---------- per-tick extras: income, alerts, attack-move ---------- */
 function xtick(dt){
  for(const f of F)if(f.alive)f.oil+=rigs.filter(r=>r.f==f.i&&Math.abs(r.y-RY)<80).length*1.5*dt;
- F[0].oil+=rigs.filter(r=>r.f==0).length*.5*XT.pump*dt;
- for(const r of rigs){if(r.xf===undefined)r.xf=r.f;if(r.xf!=r.f&&r.xf==0){say('Oil rig lost: '+(r.name||'rig'));XT.pings.push({x:r.x,y:r.y,t:T})}r.xf=r.f}
+ F[MYF].oil+=rigs.filter(r=>r.f==MYF).length*.5*XT.pump*dt;
+ for(const r of rigs){if(r.xf===undefined)r.xf=r.f;if(r.xf!=r.f&&r.xf==MYF){say('Oil rig lost: '+(r.name||'rig'));XT.pings.push({x:r.x,y:r.y,t:T})}r.xf=r.f}
  for(const u of E)if(u.u&&u.am&&!u.dead){if(u.ft&&u.ft.hp>0&&!u.tgt)u.path=[];else if(!u.path.length&&!u.act){if(hyp(u.am.x-u.x,u.am.y-u.y)<40)u.am=null;else go(u,u.am.x,u.am.y,20)}}
  ambient()}
 function xpan(dt){const sp=700*dt/cam.z;let mx=0,my=0;if(keys.a||keys.arrowleft)mx=-1;if(keys.d||keys.arrowright)mx=1;if(keys.w||keys.arrowup)my=-1;if(keys.s||keys.arrowdown)my=1;
@@ -60,11 +60,11 @@ const _upd=update;update=function(dt){if(XT.pause){xpan(dt);return}for(let i=0;i
 /* ---------- HUD: speed/pause readout, upgrades, production progress, help ---------- */
 const xt=document.createElement('div');xt.style.cssText='position:fixed;right:12px;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:3;pointer-events:none;color:#e8b04a;font-size:13px;text-shadow:0 0 3px #000';document.body.appendChild(xt);
 const ub=(id,fn)=>{const b=document.createElement('button');b.id=id;b.onclick=fn;$('btns').appendChild(b)};
-ub('x_arm',()=>{const c=300*(XT.arm+1);if(XT.arm<3&&F[0].oil>=c){F[0].oil-=c;XT.arm++;say('Armor upgraded')}});
-ub('x_pump',()=>{const c=250*(XT.pump+1);if(XT.pump<3&&F[0].oil>=c){F[0].oil-=c;XT.pump++;say('Pumps upgraded')}});
+ub('x_arm',()=>{const c=300*(XT.arm+1);if(XT.arm<3&&F[MYF].oil>=c){F[MYF].oil-=c;XT.arm++;say('Armor upgraded')}});
+ub('x_pump',()=>{const c=250*(XT.pump+1);if(XT.pump<3&&F[MYF].oil>=c){F[MYF].oil-=c;XT.pump++;say('Pumps upgraded')}});
 const _hud=hud;hud=function(){_hud();xt.textContent=(XT.pause?'PAUSED   ':'')+XT.speed+'x   P pause  [ ] speed  M mute  ? help';
- const a=$('x_arm'),p=$('x_pump'),ca=300*(XT.arm+1),cp=250*(XT.pump+1);a.textContent=XT.arm<3?'Armor L'+(XT.arm+1)+' '+ca:'Armor MAX';a.disabled=XT.arm>=3||F[0].oil<ca;p.textContent=XT.pump<3?'Pumps L'+(XT.pump+1)+' '+cp:'Pumps MAX';p.disabled=XT.pump>=3||F[0].oil<cp;
- const s1=sel[0];if(s1&&s1.t=='town'&&s1.f==0)$('info').innerHTML+=(s1.q&&s1.q.length?'<br>Building '+ST[s1.q[0]].n+' '+(s1.qt/4*100|0)+'%':'')+(s1.rally?'<br>Rally set':'<br>Ctrl+RMB: set rally point')};
+ const a=$('x_arm'),p=$('x_pump'),ca=300*(XT.arm+1),cp=250*(XT.pump+1);a.textContent=XT.arm<3?'Armor L'+(XT.arm+1)+' '+ca:'Armor MAX';a.disabled=XT.arm>=3||F[MYF].oil<ca;p.textContent=XT.pump<3?'Pumps L'+(XT.pump+1)+' '+cp:'Pumps MAX';p.disabled=XT.pump>=3||F[MYF].oil<cp;
+ const s1=sel[0];if(s1&&s1.t=='town'&&s1.f==MYF)$('info').innerHTML+=(s1.q&&s1.q.length?'<br>Building '+ST[s1.q[0]].n+' '+(s1.qt/4*100|0)+'%':'')+(s1.rally?'<br>Rally set':'<br>Ctrl+RMB: set rally point')};
 const hp=document.createElement('div');hp.style.cssText='position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.78);z-index:6;white-space:pre;font-size:14px;line-height:1.7;cursor:pointer';
 hp.textContent=`OIL FRONT - CONTROLS
 
@@ -79,7 +79,7 @@ P pause    [ ] game speed    M mute    ? or F1: this help
 addEventListener('keydown',e=>{const k=e.key;
  if(k=='p'||k=='P')XT.pause^=1;else if(k=='[')XT.speed=Math.max(1,XT.speed-1);else if(k==']')XT.speed=Math.min(3,XT.speed+1);else if(k=='m'||k=='M')XT.mute^=1;
  else if(k=='?'||k=='F1'){e.preventDefault();hp.style.display=hp.style.display=='flex'?'none':'flex'}
- else if(k=='.'){const idle=E.filter(u=>u.u&&u.f==0&&u.t!='truck'&&!u.path.length&&!u.act&&!u.tgt);sel=idle;say(idle.length+' idle unit'+(idle.length==1?'':'s'))}});
+ else if(k=='.'){const idle=E.filter(u=>u.u&&u.f==MYF&&u.t!='truck'&&!u.path.length&&!u.act&&!u.tgt);sel=idle;say(idle.length+' idle unit'+(idle.length==1?'':'s'))}});
 
 /* ---------- skirmish options on the map menu ---------- */
 {const p=document.querySelector('#mapMenu .panel'),h=document.createElement('div');h.style.cssText='margin:0 0 12px;font-size:12px;color:#b9c5ad;line-height:1.9';
