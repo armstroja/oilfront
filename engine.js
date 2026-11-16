@@ -47,7 +47,7 @@ function applyMap(kind){MAP=kind;placeCap(kind=='snow'?1200:1000);WX.fog=kind=='
  else{Terrain.fast(g,W,W);for(let i=0;i<220;i++){const x=hrnd(i,1,1)*W|0,y=hrnd(i,2,2)*W|0;if(Math.abs(y-RY)<110)continue;Assets.draw(g,'rock',0,x,y)}WATER(g);R(g,0,1128,W,8,PAL.ground[3]);R(g,0,1264,W,8,PAL.ground[3]);R(g,0,1132,W,4,PAL.ground[4]);R(g,0,1264,W,4,PAL.ground[4]);island(g);drawRoads(g);drawKits(g)}
  BASE.getContext('2d').drawImage(TC,0,0);if(kind=='snow'){drawRoads(g);drawKits(g)}}
 
-let E=[],P=[],FX=[],CR=[],SC=[],WR=[],HE=[],nid=1,sel=[],grp={},T=0,over=0,cam={x:0,y:1700,z:1},keys={},mouse={x:0,y:0,in:0,drag:null,pan:null},msgT=0;
+let E=[],P=[],FX=[],CR=[],SC=[],WR=[],HE=[],nid=1,sel=[],grp={},T=0,over=0,cam={x:0,y:1700,z:1},keys={},mouse={x:0,y:0,in:0,drag:null,pan:null,stroke:null},msgT=0;
 const F=FN.map((n,i)=>({i,oil:300,alive:1,vis:new Uint8Array(G*G),gh:new Map(),at:rnd(0,1.5)}));
 function mk(o){o.id=nid++;o.ang=o.ang||0;o.cd=0;E.push(o);return o}
 function unit(t,f,x,y){const s=ST[t];return mk({t,f,x,y,hp:s.hp,mhp:s.hp,u:1,path:[],tgt:null,act:null,at:null,sc:0,ft:null,stop:0,rt:0})}
@@ -179,10 +179,11 @@ function stepMove(u,dt){const p=u.path[0];if(!p)return;
  if(forestAt(nx,ny))return;
  const bk=blockAt(u,nx,ny);if(bk){if(bk.f!=u.f&&ST[u.t].dmg&&!u.tgt){u.tgt=bk;u.auto=1}if(!rb){for(const[ax,ay]of[[nx,u.y],[u.x,ny]])if(!forestAt(ax,ay)&&!blockAt(u,ax,ay)&&!(isW(ax,ay)&&!isW(u.x,u.y))){u.x=ax;u.y=ay;break}}return}
  u.x=nx;u.y=ny}
-/* tank traps stop every vehicle; checkpoints stop only enemy vehicles */
+/* tank traps stop every vehicle; checkpoints stop only enemy vehicles; infantry crosses trenches */
+function trenchHit(t,x,y){const a=t.a||{x:t.x-Math.cos(t.ang||0)*26,y:t.y-Math.sin(t.ang||0)*26},b=t.b||{x:t.x+Math.cos(t.ang||0)*26,y:t.y+Math.sin(t.ang||0)*26};return segD(x,y,a,b).d<t.r+2}
 function blockAt(u,x,y){if(u.t=='inf')return null;
  for(const e of E){if(!e.def||e.site||!(e.k=='trap'||e.k=='sand'||e.k=='sandc'||(e.k=='gate'&&e.f!=u.f)))continue;const d=hyp(e.x-x,e.y-y);if(d<e.r+2&&d<hyp(e.x-u.x,e.y-u.y))return e}
- for(const t of trenches)if(hyp(t.x-x,t.y-y)<t.r+4&&hyp(t.x-u.x,t.y-u.y)<hyp(t.x-x,t.y-y)+1)return t;
+ for(const t of trenches)if(trenchHit(t,x,y)&&!trenchHit(t,u.x,u.y))return t;
  return null}
 function truckStep(t,dt){const dw=ALLT.filter(x=>x.f==t.f).sort((p,q)=>hyp(p.x-t.x,p.y-t.y)-hyp(q.x-t.x,q.y-t.y))[0];if(!dw){t.stall=1;return}const hn=dw.gate||dw.nd;
  if(!t.rt.length){if(t.cur==hn){F[t.f].oil+=100;kill(t,1);return}const r=route(t.cur,hn);t.stall=!r;if(r)t.rt=r;return}
@@ -203,7 +204,7 @@ function unitAI(u,dt){const s=ST[u.t];if(u.drop>0){u.drop-=dt;return}if(u.t=='tr
    if(d>need){if(!u.path.length||(T-u.rt>1&&!RB(u.t))){go(u,tx,ty,need*.7);if(RB(u.t)){const q=u.path[u.path.length-1];if(!q||hyp(q.x-tx,q.y-ty)>need+6){u.act=null;u.at=null;u.path=[]}}}}else{u.path=[];
     if(u.act=='gar'){if(t.gar<4){t.gar++;kill(u,1);return}u.act=null}
     else if(u.act=='blow'){u.w=(u.w||0)+dt;if(u.w>=3){u.w=0;if(t.hp>0)hurtB(t,9999);u.act=null}}
-    else if(u.act=='dig'){u.w=(u.w||0)+dt;if(u.w>=4){u.w=0;if(!isW(t.x,t.y)){trenches.push({x:t.x,y:t.y,r:34,f:u.f,ang:t.ang||0});const m=trenches.filter(q=>q.f==u.f);if(m.length>80)trenches.splice(trenches.indexOf(m[0]),1);if(u.f==0&&!u.bq.length)say('Trench dug')}u.act=null}}
+    else if(u.act=='dig'){u.w=(u.w||0)+dt;if(u.w>=4){u.w=0;if(!isW(t.x,t.y)){const a={x:t.x-Math.cos(t.ang||0)*26,y:t.y-Math.sin(t.ang||0)*26},b={x:t.x+Math.cos(t.ang||0)*26,y:t.y+Math.sin(t.ang||0)*26};trenches.push({x:t.x,y:t.y,r:16,f:u.f,ang:t.ang||0,a,b});const m=trenches.filter(q=>q.f==u.f);if(m.length>80)trenches.splice(trenches.indexOf(m[0]),1);if(u.f==0&&!u.bq.length)say('Trench dug')}u.act=null}}
     else if(u.act=='cut'){u.w=(u.w||0)+dt;if(u.w>=3){u.w=0;const r=roadAt(t.x,t.y);if(r){const c=!r.e.cut,re=r.e.n.a.find(q=>q.n==r.n);r.e.cut=re.cut=c;r.e.cx=re.cx=r.x;r.e.cy=re.cy=r.y;fx(r.x,r.y,40);say(c?'Road blown':'Road repaired')}u.act=null}}
     else if(u.act=='build'){t.prog=Math.min(1,t.prog+dt/t.bt);t.hp=Math.max(t.hp,t.mhp*(.25+.75*t.prog));if(t.prog>=1){finishDef(t);u.act=null;if(u.f==0)say(DEF[t.k].n+' complete')}}
     else if(u.act=='road'){t.prog=Math.min(1,t.prog+dt/t.bt);if(t.prog>=1){t.site=0;u.act=null;if(u.f==0)say('Makeshift road complete')}}
@@ -294,7 +295,7 @@ const bt=$('btns');ORDER.forEach(t=>{const b=document.createElement('button');b.
   st=d.dmg?' | range '+d.rng+', '+d.dmg+' dmg':d.cram?' | shoots down rockets':d.vis?' | sees far':d.cover?' | cover for infantry':d.gate?' | blocks enemy vehicles only':d.blk?' | blocks ALL vehicles':'';
   b.innerHTML=d.n+' <b>'+d.cost+'</b><br><small style="opacity:.7">'+tr+st+(LINE[k]?' | drag for a line':'')+'</small>';
   b.onclick=()=>{placing={k,rot:0};menu=0;tool=null;say((LINE[k]?'Click, or drag a line, to place ':'Click to place ')+d.n+(d.rot?' (Z rotates)':'')+' - right-click cancels')};dm.appendChild(b)})}
-[['cut','C Cut road','cut'],['dig','V Dig trench','dig']].forEach(([id,txt,tl])=>{const b=document.createElement('button');b.id='b_'+id;b.textContent=txt;b.style.display='none';b.onclick=()=>{if(tl=='dig'){placing={k:'trench',rot:0};menu=0;tool=null;say('Hold the left mouse button and drag to keep digging (Z rotates single trenches, shift keeps the tool ready)');return}tool=tool==tl?null:tl;say(tool?'Right-click a road to blow/repair it':'')};bt.appendChild(b)});
+[ ['cut','C Cut road','cut'],['dig','V Dig trench','dig']].forEach(([id,txt,tl])=>{const b=document.createElement('button');b.id='b_'+id;b.textContent=txt;b.style.display='none';b.onclick=()=>{if(tl=='dig'){placing={k:'trench',rot:0};menu=0;tool=null;say('Drag a freehand curve to dig a trench; infantry can cross, vehicles cannot');return}tool=tool==tl?null:tl;say(tool?'Right-click a road to blow/repair it':'')};bt.appendChild(b)});
 {const db=document.createElement('button');db.id='b_dep';db.textContent='H Deploy HQ';db.style.display='none';db.onclick=()=>deploy(sel.find(e=>e.t=='mcv'));bt.appendChild(db)}
 function hud(){const mine=E.filter(e=>e.f==0),tr=mine.filter(e=>e.t=='truck').length;
  $('top').innerHTML=`<span>Oil <b>${F[0].oil|0}</b></span><span>Rigs <b>${rigs.filter(r=>r.f==0).length}</b>/${rigs.length}</span><span>Trucks en route <b>${tr}</b></span><span>Factions <b>${F.filter(f=>f.alive).length}</b>/5</span><span>Weather <b>${WX.kind=='clear'?(MAP=='snow'?'Mist':'Clear'):WX.kind=='rain'?'Rain':WX.kind=='fog'?'Heavy Fog':'Sandstorm'}</b></span>`;
@@ -305,12 +306,12 @@ function hud(){const mine=E.filter(e=>e.f==0),tr=mine.filter(e=>e.t=='truck').le
  $('info').innerHTML=h+(sel.some(s=>s.t=='mcv')?'<br>H / double-click: deploy HQ':'')+(sel.some(s=>s.t=='eng')?'<br>B build · C road · V trench · drag to build lines · RMB broken road: repair'+(tool?'<br>Tool: '+tool:''):'')}
 function resize(){C.width=innerWidth;C.height=innerHeight}resize();addEventListener('resize',resize);
 const w2=(sx,sy)=>({x:sx/cam.z+cam.x,y:sy/cam.z+cam.y});
-C.addEventListener('mousedown',e=>{mouse.x=e.clientX;mouse.y=e.clientY;if(e.button==0)mouse.drag={x:e.clientX,y:e.clientY};if(e.button==1){mouse.pan={x:e.clientX,y:e.clientY};e.preventDefault()}});
+C.addEventListener('mousedown',e=>{mouse.x=e.clientX;mouse.y=e.clientY;if(e.button==0){mouse.drag={x:e.clientX,y:e.clientY};mouse.stroke=placing&&placing.k=='trench'?[w2(e.clientX,e.clientY)]:null}if(e.button==1){mouse.pan={x:e.clientX,y:e.clientY};e.preventDefault()}});
 C.addEventListener('contextmenu',e=>{e.preventDefault();if(placing){placing=null;mouse.drag=null;return}const p=w2(e.clientX,e.clientY);order(p.x,p.y)});
 C.addEventListener('dblclick',e=>{const p=w2(e.clientX,e.clientY),t=pickAt(p.x,p.y);if(t&&t.t=='mcv'&&t.f==0)deploy(t)});
-addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;mouse.in=e.target==C;if(mouse.pan){cam.x-=(e.clientX-mouse.pan.x)/cam.z;cam.y-=(e.clientY-mouse.pan.y)/cam.z;mouse.pan={x:e.clientX,y:e.clientY}}});
-addEventListener('mouseup',e=>{if(e.button==1)mouse.pan=null;if(e.button!=0||!mouse.drag)return;const d=mouse.drag;mouse.drag=null;const a=w2(d.x,d.y),b=w2(e.clientX,e.clientY);if(dropping){doDrop(b.x,b.y);return}
- if(placing){placeDrag(a,b,e.shiftKey);return}
+addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;mouse.in=e.target==C;if(mouse.stroke){const p=w2(e.clientX,e.clientY),last=mouse.stroke[mouse.stroke.length-1];if(hyp(p.x-last.x,p.y-last.y)>8)mouse.stroke.push(p)}if(mouse.pan){cam.x-=(e.clientX-mouse.pan.x)/cam.z;cam.y-=(e.clientY-mouse.pan.y)/cam.z;mouse.pan={x:e.clientX,y:e.clientY}}});
+addEventListener('mouseup',e=>{if(e.button==1)mouse.pan=null;if(e.button!=0||!mouse.drag)return;const d=mouse.drag,stroke=mouse.stroke;mouse.drag=null;mouse.stroke=null;const a=w2(d.x,d.y),b=w2(e.clientX,e.clientY);if(dropping){doDrop(b.x,b.y);return}
+ if(placing){mouse.stroke=stroke;placeDrag(a,b,e.shiftKey);mouse.stroke=null;return}
  if(hyp(e.clientX-d.x,e.clientY-d.y)<6){const t=pickAt(b.x,b.y),ns=t&&t.f==0&&!t.isB?[t]:[];sel=e.shiftKey?[...new Set([...sel,...ns])]:ns}
  else{const x0=Math.min(a.x,b.x),x1=Math.max(a.x,b.x),y0=Math.min(a.y,b.y),y1=Math.max(a.y,b.y),r=E.filter(u=>u.f==0&&u.u&&u.x>x0&&u.x<x1&&u.y>y0&&u.y<y1);sel=e.shiftKey?[...new Set([...sel,...r])]:r}});
 C.addEventListener('wheel',e=>{e.preventDefault();const p=w2(e.clientX,e.clientY);cam.z=cl(cam.z*(e.deltaY<0?1.1:.9),.4,2.5);cam.x=p.x-e.clientX/cam.z;cam.y=p.y-e.clientY/cam.z},{passive:false});
@@ -319,7 +320,7 @@ addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(e.ctrlKey&&/^[1-5]
  if(k==' '){e.preventDefault();const hp=hqs[0].dormant?(E.find(u=>u.t=='mcv'&&u.f==0)||hqs[0]):hqs[0];cam.x=hp.x-C.width/cam.z/2;cam.y=hp.y-C.height/cam.z/2;return}
  if(k=='h'){const m=sel.find(s=>s.t=='mcv');if(m){deploy(m);return}}
  if(k=='escape'){tool=null;placing=null;menu=0}if(k=='b'&&sel.some(s=>s.t=='eng')){menu=menu?0:1;placing=null;tool=null;return}if(k=='z'&&placing&&(placing.k=='trench'||(DEF[placing.k]&&DEF[placing.k].rot))){placing.rot=(placing.rot+1)%4;return}
- if(k=='v'&&sel.some(s=>s.t=='eng')){placing={k:'trench',rot:0};menu=0;tool=null;say('Hold the left mouse button and drag to keep digging (Z rotates single trenches, shift keeps the tool ready)');return}
+ if(k=='v'&&sel.some(s=>s.t=='eng')){placing={k:'trench',rot:0};menu=0;tool=null;say('Drag a freehand curve to dig a trench; infantry can cross, vehicles cannot');return}
  if(k=='c'&&sel.some(s=>s.t=='eng')){placing=null;menu=0;tool='cut';say('Right-click a road to blow/repair it');return}
  if((k=='delete'||k=='x')&&sel.some(s=>s.def&&s.f==0)){for(const d of sel.filter(s=>s.def&&s.f==0))kill(d,1);say('Defence removed');return}
  const pr=producer(),i='qfertg'.indexOf(k);if(pr&&i>=0&&!e.ctrlKey){queue(pr,ORDER[i]);return}keys[k]=1});
@@ -353,13 +354,23 @@ function drawWx(g){const w=C.width,h=C.height,j=MAP=='snow';
 /* ---- Drag-a-line building (sandbags, tank traps, trenches) ---- */
 function linePts(a,b,sp){const L=hyp(b.x-a.x,b.y-a.y),ang=Math.atan2(b.y-a.y,b.x-a.x),n=L<sp*.8?0:Math.floor(L/sp),p=[];
  for(let i=0;i<=n;i++)p.push(n?{x:a.x+Math.cos(ang)*i*sp,y:a.y+Math.sin(ang)*i*sp}:{x:b.x,y:b.y});return{p,ang:n?ang:0,n}}
+function trenchPts(points){
+ const clean=[];for(const p of points)if(!clean.length||hyp(p.x-clean[clean.length-1].x,p.y-clean[clean.length-1].y)>6)clean.push(p);
+ if(clean.length<2)return[{x:clean[0].x,y:clean[0].y,ang:placing.rot*Math.PI/2}];
+ const out=[{x:clean[0].x,y:clean[0].y,ang:Math.atan2(clean[1].y-clean[0].y,clean[1].x-clean[0].x)}];let carry=0;
+ for(let i=1;i<clean.length;i++){const a=clean[i-1],b=clean[i],dx=b.x-a.x,dy=b.y-a.y,L=hyp(dx,dy),ang=Math.atan2(dy,dx);if(!L)continue;
+  let d=LINE.trench-carry;while(d<=L){const t=d/L;out.push({x:a.x+dx*t,y:a.y+dy*t,ang});d+=LINE.trench}carry=(d-L)%LINE.trench}
+ const last=clean[clean.length-1],prev=clean[clean.length-2];if(hyp(last.x-out[out.length-1].x,last.y-out[out.length-1].y)>LINE.trench*.35)out.push({x:last.x,y:last.y,ang:Math.atan2(last.y-prev.y,last.x-prev.x)});
+ return out;
+}
+function trenchDragPoints(a,b){return mouse.stroke&&mouse.stroke.length>1?trenchPts(mouse.stroke):trenchPts([a,b])}
 function draggableTrenchAngle(a,b,ls,p){return a&&hyp(b.x-a.x,b.y-a.y)>=LINE.trench*.8?ls.ang:p.rot*Math.PI/2}
 function drawLine(g){if(!placing)return 0;const k=placing.k,sp=LINE[k];if(!sp)return 0;
  const p=w2(mouse.x,mouse.y),dr=mouse.drag,ls=dr?linePts(w2(dr.x,dr.y),p,sp):{p:[p],ang:0,n:0};
  if(k!='trench'&&!ls.n)return 0;placing.chk=null;
  if(k=='road'&&dr){const ok=roadCheck(w2(dr.x,dr.y).x,w2(dr.x,dr.y).y)&&roadCheck(p.x,p.y);g.save();g.globalAlpha=.65;g.lineCap='butt';g.strokeStyle=ok?(MAP=='snow'?'#d6dddd':'#a18358'):'#e54';g.lineWidth=20;g.beginPath();g.moveTo(w2(dr.x,dr.y).x,w2(dr.x,dr.y).y);g.lineTo(p.x,p.y);g.stroke();g.restore();return 1}
- const trenchAng=draggableTrenchAngle(dr&&w2(dr.x,dr.y),p,ls,placing);
- for(const q of ls.p){if(k=='trench'){g.save();g.translate(q.x,q.y);g.rotate(trenchAng);g.globalAlpha=.6;R(g,-26,-5,52,10,isW(q.x,q.y)?'#a33':'#5a4a30');g.restore();g.globalAlpha=1}
+ const trenchAng=draggableTrenchAngle(dr&&w2(dr.x,dr.y),p,ls,placing),trenchPath=k=='trench'?trenchDragPoints(dr&&w2(dr.x,dr.y),p):null;
+ for(const q of k=='trench'?trenchPath:ls.p){if(k=='trench'){g.save();g.translate(q.x,q.y);g.rotate(q.ang||trenchAng);g.globalAlpha=.6;R(g,-26,-5,52,10,isW(q.x,q.y)?'#a33':'#5a4a30');g.restore();g.globalAlpha=1}
   else{const c=placeCheck(k,q.x,q.y);drawD(g,{k,x:c.x,y:c.y,rot:k=='trap'?0:ls.ang,gang:-Math.PI/2},0,c.ok?.7:.3);g.strokeStyle=c.ok?'#8f8':'#e54';g.lineWidth=1.5;g.beginPath();g.arc(c.x,c.y,12,0,6.28);g.stroke()}}
  return 1}
 function placeDrag(a,b,keep){const k=placing.k,sp=LINE[k],us=sel.filter(u=>u.t=='eng'&&u.f==0);
@@ -367,8 +378,8 @@ function placeDrag(a,b,keep){const k=placing.k,sp=LINE[k],us=sel.filter(u=>u.t==
  const ls=sp?linePts(a,b,sp):{p:[b],ang:0,n:0};if(k!='trench'&&!ls.n)return place(b.x,b.y,keep);
  const d=DEF[k]||{},jobs=[];let bad=0,poor=0;
  if(k=='road'){if(!roadCheck(a.x,a.y)||!roadCheck(b.x,b.y)){say('Makeshift roads need dry ground');return}if(F[0].oil<15){say('Not enough oil');return}F[0].oil-=15;const r=mkRoad(a,b,1),u=us[0];cmd(u);u.act='road';u.at={x:(a.x+b.x)/2,y:(a.y+b.y)/2,road:r,site:1};u.at=r;u.w=0;say('Building makeshift road');if(!keep)placing=null;return}
- const trenchAng=draggableTrenchAngle(a,b,ls,placing);
- for(const q of ls.p){if(k=='trench'){if(isW(q.x,q.y)||(MAP!='snow'&&Math.abs(q.y-RY)<80)){bad++;continue}jobs.push({x:q.x,y:q.y,t:'pt',pt:1,ang:trenchAng});continue}
+ const trenchAng=draggableTrenchAngle(a,b,ls,placing),trenchPath=k=='trench'?trenchDragPoints(a,b):null;
+ for(const q of k=='trench'?trenchPath:ls.p){if(k=='trench'){if(isW(q.x,q.y)||(MAP!='snow'&&Math.abs(q.y-RY)<80)){bad++;continue}jobs.push({x:q.x,y:q.y,t:'pt',pt:1,ang:q.ang||trenchAng});continue}
   const c=placeCheck(k,q.x,q.y);if(!c.ok){bad++;continue}if(F[0].oil<d.cost){poor=1;break}F[0].oil-=d.cost;jobs.push(mkDef(k,0,c.x,c.y,k=='trap'?0:ls.ang,1))}
  jobs.forEach((j,i)=>{const u=us[i%us.length],busy=buildBusy(u)||(u.act=='dig'&&u.at&&u.at.pt);
   if(busy)(u.bq=u.bq||[]).push(j);else{cmd(u);u.act=j.pt?'dig':'build';u.at=j;u.w=0}});
