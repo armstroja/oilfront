@@ -28,7 +28,7 @@ const LINE={sand:22,trap:26,trench:40,road:32};
 let MAP='desert';
 let MYF=0;
 /* Vietnam's forest mask is shared by rendering and movement so the canopy is impassable. */
-const forestEntities=()=>[...rigs,...towns,...hqs.filter(h=>h!==hqs[0])].map(e=>[e.x,e.y,e.isHQ?75:e.capital?105:e.t=='rig'?52:62]);
+let _fe=null;const forestEntities=()=>_fe||(_fe=[...rigs,...towns,...hqs.filter(h=>h!==hqs[0])].map(e=>[e.x,e.y,e.isHQ?75:e.capital?105:e.t=='rig'?52:62]));
 function forestAt(x,y){
  if(MAP!='snow'||drv(x,y))return 0;
  for(const e of forestEntities())if(Math.abs(x-e[0])<e[2]&&Math.abs(y-e[1])<e[2])return 0;
@@ -43,12 +43,12 @@ function forest(g){const K=['treeBroad','treeOlive','treePalm','treeBroad','scru
 /* the capital sits on a sandy island in the middle of the river; the N-S road is its causeway */
 function island(g){for(let y=1138;y<1262;y++)for(let x=1058;x<1342;x++){const nx=(x-1200)/136,ny=(y-1200)/56,d=Math.pow(Math.abs(nx),8)+Math.pow(Math.abs(ny),8)+(hrnd(x>>2,y>>2,5)-.5)*.2;if(d<1){g.fillStyle=d>.8?PAL.ground[4]:(hrnd(x>>2,y>>2,6)<.5?PAL.ground[2]:PAL.ground[3]);g.fillRect(x,y,1,1)}}for(const p of[[1160,1156],[1242,1156],[1162,1246],[1240,1246]]){g.imageSmoothingEnabled=true;g.drawImage(Assets.get(hrnd(p[0],p[1],1)<.5?'treePalm':'treeOlive',0),p[0]-12,p[1]-12,24,24);g.imageSmoothingEnabled=false}}
 const WATER=c=>{for(let y=1136;y<1264;y+=16)for(let x=0;x<W;x+=16)Assets.drawK(c,'water',0,x,y)};
-function applyMap(kind){MAP=kind;placeCap(kind=='snow'?1200:1000);WX.fog=kind=='snow'?.4:0;WX.sand=0;WX.kind='clear';WX.next=20;const g=TC.getContext('2d');g.clearRect(0,0,W,W);
+function applyMap(kind){MAP=kind;_fe=null;placeCap();WX.fog=kind=='snow'?.4:0;WX.sand=0;WX.kind='clear';WX.next=20;const g=TC.getContext('2d');g.clearRect(0,0,W,W);
  if(kind=='snow'){Terrain.jungle(g,W,W);forest(g);bridges.forEach(b=>{b.hp=0;b.rb=0})}
- else{Terrain.fast(g,W,W);for(let i=0;i<220;i++){const x=hrnd(i,1,1)*W|0,y=hrnd(i,2,2)*W|0;if(Math.abs(y-RY)<110)continue;Assets.draw(g,'rock',0,x,y)}WATER(g);R(g,0,1128,W,8,PAL.ground[3]);R(g,0,1264,W,8,PAL.ground[3]);R(g,0,1132,W,4,PAL.ground[4]);R(g,0,1264,W,4,PAL.ground[4]);island(g);drawRoads(g);drawKits(g)}
+ else{bridges.forEach(b=>{b.hp=b.mhp;b.rb=0});Terrain.fast(g,W,W);for(let i=0;i<220;i++){const x=hrnd(i,1,1)*W|0,y=hrnd(i,2,2)*W|0;if(Math.abs(y-RY)<110)continue;Assets.draw(g,'rock',0,x,y)}WATER(g);R(g,0,1128,W,8,PAL.ground[3]);R(g,0,1264,W,8,PAL.ground[3]);R(g,0,1132,W,4,PAL.ground[4]);R(g,0,1264,W,4,PAL.ground[4]);island(g);drawRoads(g);drawKits(g)}
  BASE.getContext('2d').drawImage(TC,0,0);if(kind=='snow'){drawRoads(g);drawKits(g)}}
 
-let E=[],P=[],FX=[],CR=[],SC=[],WR=[],HE=[],nid=1,sel=[],grp={},T=0,over=0,cam={x:0,y:1700,z:1},keys={},mouse={x:0,y:0,in:0,drag:null,pan:null,stroke:null},msgT=0;
+let E=[],P=[],FX=[],CR=[],WR=[],HE=[],nid=1,sel=[],grp={},T=0,over=0,cam={x:0,y:1700,z:1},keys={},mouse={x:0,y:0,in:0,drag:null,pan:null,stroke:null},msgT=0;
 const F=FN.map((n,i)=>({i,oil:260,alive:1,vis:new Uint8Array(G*G),gh:new Map(),at:rnd(0,1.5)}));
 function mk(o){o.id=nid++;o.ang=o.ang||0;o.cd=0;E.push(o);return o}
 function unit(t,f,x,y){const s=ST[t];return mk({t,f,x,y,hp:s.hp,mhp:s.hp,u:1,path:[],tgt:null,act:null,at:null,sc:0,ft:null,stop:0,rt:0})}
@@ -114,14 +114,14 @@ const BC=[];function bridgeCv(k){if(BC[k])return BC[k];const cv=document.createE
  else{deck(c,0,7);deck(c,73,80);for(let i=0;i<90;i++){const x=7+(hrnd(i,1,9)*66|0),y=8+(hrnd(i,2,9)*15|0),q=hrnd(i,3,9);rect(c,x,y,2+(hrnd(i,4,9)*3|0),2+(hrnd(i,5,9)*2|0),q<.4?'#6f726e':q<.8?'#9a9c96':'#8a4b2a')}dot(c,30,14,'#e67e22');dot(c,50,17,'#e67e22');dot(c,50,16,'#f5d76e')}
  return BC[k]=cv}
 const FCV=document.createElement('canvas');FCV.width=FCV.height=600;const FG=FCV.getContext('2d'),FI=FG.createImageData(600,600),BAY=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
-function updFog(){const v=F[MYF].vis,D=new Float32Array(G*G);for(let i=0;i<D.length;i++)D[i]=v[i]==2?0:v[i]?.5:.93;const d=FI.data;
+let fogSig=null;function updFog(){const v=F[MYF].vis;let sg=0;for(let i=0;i<v.length;i++)sg=(sg*31+v[i]+i)|0;if(sg===fogSig)return;fogSig=sg;const D=new Float32Array(G*G);for(let i=0;i<D.length;i++)D[i]=v[i]==2?0:v[i]?.5:.93;const d=FI.data;
  for(let y=0;y<600;y++){const gy=(y+.5)/10-.5,iy=Math.floor(gy),fy=gy-iy,y0=cl(iy,0,G-1),y1=cl(iy+1,0,G-1);for(let x=0;x<600;x++){const gx=(x+.5)/10-.5,ix=Math.floor(gx),fx=gx-ix,x0=cl(ix,0,G-1),x1=cl(ix+1,0,G-1);
   const a=D[y0*G+x0],b=D[y0*G+x1],c=D[y1*G+x0],e=D[y1*G+x1],Dv=a+(b-a)*fx+(c-a)*fy+(a-b-c+e)*fx*fy,q=Math.floor(Dv*4+(BAY[(y&3)*4+(x&3)]+.5)/16)/4,i=(y*600+x)*4;d[i]=8;d[i+1]=9;d[i+2]=7;d[i+3]=Math.min(235,q*255)}}FG.putImageData(FI,0,0)}
 const vi=(f,x,y)=>F[f].vis[cl(y/CS|0,0,G-1)*G+cl(x/CS|0,0,G-1)];
 const seen=(f,e)=>e.f==f||(e.s?vi(f,e.x,e.y)>0:vi(f,e.x,e.y)==2);
 function reveal(v,x,y,r){const c=r/CS|0,cx=x/CS|0,cy=y/CS|0;for(let j=-c;j<=c;j++)for(let i=-c;i<=c;i++){const a=cx+i,b=cy+j;if(a>=0&&b>=0&&a<G&&b<G&&i*i+j*j<=c*c)v[b*G+a]=2}}
 function updVis(){for(const f of F){const v=f.vis;for(let i=0;i<v.length;i++)if(v[i]==2)v[i]=1}
-for(const e of E)if(e.f>=0&&F[e.f].alive)reveal(F[e.f].vis,e.x,e.y,(e.u?ST[e.t].vis:e.def?e.vis:e.t=='hq'?420:e.t=='town'?300:200)*vm());for(const h of HE){reveal(F[h.f].vis,h.x,h.y,300);if(h.st<2)reveal(F[h.f].vis,h.tx,h.ty,260)}}
+for(const e of E)if(e.f>=0&&F[e.f].alive)reveal(F[e.f].vis,e.x,e.y,(e.u?ST[e.t].vis:e.def?e.vis:e.isHQ?420:e.t=='town'?300:200)*vm());for(const h of HE){reveal(F[h.f].vis,h.x,h.y,300);if(h.st<2)reveal(F[h.f].vis,h.tx,h.ty,260)}}
 function updGh(dt){for(const f of F){for(const [k,g] of f.gh){if(g.u){g.age+=dt;if(g.age>45||vi(f.i,g.x,g.y)==2)f.gh.delete(k)}else if(g.def&&g.e.dead&&vi(f.i,g.x,g.y)==2)f.gh.delete(k)}
  for(const e of E)if(e.f!=f.i&&(e.u||e.s)&&(e.s?vi(f.i,e.x,e.y)==2:vi(f.i,e.x,e.y)==2))f.gh.set(e.id,{e,id:e.id,x:e.x,y:e.y,t:e.t,f:e.f,ang:e.ang,u:e.u,age:0,def:e.def,k:e.k,rot:e.rot,gang:e.gang});
  if(f.i==MYF)for(const e of [...rigs,...towns,...(hqs[MYF].dormant?[]:[hqs[MYF]])])if(vi(MYF,e.x,e.y)==2)f.gh.set(e.id,{e,id:e.id,x:e.x,y:e.y,t:e.t,f:e.f,u:0,age:0})}}
@@ -133,26 +133,26 @@ function cov(e){let m=1;if(trenches.some(t=>t.f==e.f&&hyp(t.x-e.x,t.y-e.y)<t.r))
 function hurtB(b,d){if(b.hp<=0)return;b.hp-=d;if(b.hp<=0){b.hp=0;fx(b.x,b.y,60);say('A bridge was destroyed!')}}
 function kill(e,q){if(e.dead)return;e.dead=1;e.hp=0;E.splice(E.indexOf(e),1);sel=sel.filter(s=>s!=e);
 if(e.def&&e.site&&F[e.f])F[e.f].oil+=DEF[e.k].cost*.5;
-if(e.def&&e.k=='bunker'){TC.getContext('2d').drawImage(Assets.get('bunkerRubble',0),Math.round(e.x-16),Math.round(e.y-16));SC.push([e.x,e.y,'bunkerRubble'])}if(!q)fx(e.x,e.y,e.t=='hq'?70:16);
+if(e.def&&e.k=='bunker'){TC.getContext('2d').drawImage(Assets.get('bunkerRubble',0),Math.round(e.x-16),Math.round(e.y-16))}if(!q)fx(e.x,e.y,e.t=='hq'?70:16);
 if(!q&&e.u&&e.t!='inf'){WR.push({x:e.x,y:e.y,ang:e.ang,k:e.t=='tank'||e.t=='art'?'wreckTank':'wreckTruck'});if(WR.length>70)WR.shift()}
 if(e.t=='truck'){if(e.src)e.src.tk=null;if(!q)CR.push({x:e.x,y:e.y,o:60,l:45})}if(e.t=='hq')elim(e.f)}
 function elim(f){F[f].alive=0;for(const e of E.slice())if(e.f==f){if(e.u||e.def)kill(e);else if(e.t!='hq'){e.f=-1;e.cap=0;e.gar=0}}
 say(FN[f]+' eliminated!');if(f==MYF)end('DEFEAT');else if(F.filter(x=>x.alive).length==1)end('VICTORY')}
-function end(t){over=1;const d=$('end');d.style.display='flex';d.textContent=t}
+function end(t){over=1;const d=$('end');d.style.display='flex';d.textContent=t;const b=document.createElement('button');b.textContent='Play again';b.style.cssText='margin-left:24px;font:inherit;font-size:18px;padding:6px 14px;cursor:pointer;pointer-events:auto';b.onclick=()=>location.reload();d.appendChild(b)}
 function find(u,r){let b=null,bd=r;for(const t of E){if(t.f<0||t.f==u.f||!(t.u||t.t=='hq'||(t.def&&(t.gun||t.blk)))||!seen(u.f,t))continue;const d=hyp(t.x-u.x,t.y-u.y)-(t.u?0:t.r);if(d<bd){bd=d;b=t}}return b}
 function fire(u,t,s,a){u.cd=s.rate;u.ang=Math.atan2(t.y-u.y,t.x-u.x);const ar=u.t=='art'||!!s.ar;P.push({x:u.x,y:u.y,tx:t.x,ty:t.y,f:u.f,d:s.dmg,spl:s.splash||0,sp:s.sp||(ar?260:u.t=='inf'?320:520),tg:ar||t.isB?null:t,bt:t.isB?t:null,a:a||u.t,ar,rk:ar||u.t=='inf',tot:hyp(t.x-u.x,t.y-u.y),sx:u.x,sy:u.y})}
 function launchBarrage(silo,x,y){if(silo.cd>0){say('Missile Silo reloading');return}const d=DEF.silo;silo.cd=d.rate;silo.gang=Math.atan2(y-silo.y,x-silo.x);
  for(let i=0;i<7;i++){const a=rnd(0,Math.PI*2),r=rnd(0,90),tx=cl(x+Math.cos(a)*r,70,W-70),ty=cl(y+Math.sin(a)*r,70,W-70),sp=220+rnd(-25,25);P.push({x:silo.x,y:silo.y,tx,ty,f:silo.f,d:105,spl:110,sp,ar:1,rk:1,a:'silo',tot:hyp(tx-silo.x,ty-silo.y),sx:silo.x,sy:silo.y,delay:i*.22})}
  say('Missile barrage launched')}
 function roadHit(p){const r=roadAt(p.tx,p.ty);if(!r||r.e.cut||hyp(r.x-p.tx,r.y-p.ty)>p.spl*.5+6)return;const e=r.e;if(T-(e.ht||-99)>25)e.hn=0;e.ht=T;if(++e.hn>=3){const re=e.n.a.find(q=>q.n==r.n);e.cut=re.cut=1;e.cx=re.cx=r.x;e.cy=re.cy=r.y;fx(r.x,r.y,40);if(vi(MYF,r.x,r.y)>0)say('A road was blown apart!')}}
-function impact(p){fx(p.tx,p.ty,p.spl?p.spl*.7:9);if(p.spl)roadHit(p);if(p.spl){TC.getContext('2d').drawImage(Assets.get('scorch',0),Math.round(p.tx-16),Math.round(p.ty-16));SC.push([p.tx,p.ty]);if(SC.length>400)SC.shift()}if(p.spl){for(const e of E.slice())if(e.f!=p.f&&e.hp>0){const d=hyp(e.x-p.tx,e.y-p.ty)-(e.t=='hq'?e.r:0);if(d<p.spl)hurt(e,p.d*mult(p.a,e.t)*(1-d/p.spl*.5))}}else if(p.tg&&p.tg.hp>0)hurt(p.tg,p.d*mult(p.a,p.tg.t));
+function impact(p){fx(p.tx,p.ty,p.spl?p.spl*.7:9);if(p.spl)roadHit(p);if(p.spl){TC.getContext('2d').drawImage(Assets.get('scorch',0),Math.round(p.tx-16),Math.round(p.ty-16))}if(p.spl){for(const e of E.slice())if(e.f!=p.f&&e.hp>0){const d=hyp(e.x-p.tx,e.y-p.ty)-(e.t=='hq'?e.r:0);if(d<p.spl)hurt(e,p.d*mult(p.a,e.t)*(1-d/p.spl*.5))}}else if(p.tg&&p.tg.hp>0)hurt(p.tg,p.d*mult(p.a,p.tg.t));
 if(p.bt)hurtB(p.bt,p.d*(p.ar?1.6:p.a=='tank'?1.2:p.a=='scout'?.2:.8))}
 const isl=(x,y)=>Math.abs(x-1200)<16||(x>1064&&x<1336&&y>1144&&y<1256),isW=(x,y)=>MAP!='snow'&&Math.abs(y-RY)<60&&!isl(x,y)&&!bridges.some(b=>b.hp>0&&Math.abs(x-b.x)<40);
 const side=y=>y<RY?0:1;
 function plan(x,y,tx,ty){const p=[],IS=(a,b)=>MAP!='snow'&&Math.abs(a-1200)<140&&Math.abs(b-RY)<56;
  if(IS(tx,ty)&&!IS(x,y))return[{x:1200,y:y<RY?1100:1300},{x:1200,y:1200},{x:tx,y:ty}];
  if(IS(x,y)&&!IS(tx,ty)){const wy=ty<RY?1100:1300;return[{x:1200,y:1200},{x:1200,y:wy},...plan(1200,wy,tx,ty)]}
-if(side(y)!=side(ty)){let bt=null,bd=1e9;for(const b of bridges)if(b.hp>0){const d=hyp(b.x-x,b.y-y)+hyp(b.x-tx,b.y-ty);if(d<bd){bd=d;bt=b}}
+if(MAP!='snow'&&side(y)!=side(ty)){let bt=null,bd=1e9;for(const b of bridges)if(b.hp>0){const d=hyp(b.x-x,b.y-y)+hyp(b.x-tx,b.y-ty);if(d<bd){bd=d;bt=b}}
  const s=side(y);if(bt)p.push({x:bt.x,y:s?1330:1070},{x:bt.x,y:s?1070:1330});else return [{x,y:s?1290:1110}]}p.push({x:tx,y:ty});return p}
 const RB=t=>t=='tank'||t=='art';
 function segs(){if(SG)return SG;SG=[];for(const n of N)for(const e of n.a)if(n.i<e.n.i&&(n.x!=e.n.x||n.y!=e.n.y))SG.push({a:n,b:e.n,br:e.br,e});return SG}
@@ -167,7 +167,7 @@ function rpath(u,tx,ty){const p0=nearRoad(u.x,u.y),p1=nearRoad(tx,ty);if(!p0||!p
  return best?[{x:p0.x,y:p0.y},...best.w.map(n=>({x:n.x,y:n.y})),end]:[]}
 function go(u,x,y,stop){u.path=RB(u.t)?rpath(u,x,y):plan(u.x,u.y,x,y);u.stop=stop||6;u.rt=T;u.pg={x,y}}
 function cmd(u){u.act=null;u.at=null;u.tgt=null;u.path=[];u.bq=[]}
-function buildBusy(u){return !!(u.act=='build'&&u.at&&u.at.site&&!u.at.dead)||(u.bq&&u.bq.length>0)}
+function buildBusy(u){return !!(u.act=='build'&&u.at&&u.at.site&&!u.at.dead)||!!(u.act=='dig'&&u.at&&u.at.pt)||(u.bq&&u.bq.length>0)}
 function stepMove(u,dt){const p=u.path[0];if(!p)return;
  /* stuck watchdog for road-bound units: if a waypoint takes far too long, snap to the road and re-plan */
  if(RB(u.t)){if(u.wp!==p){u.wp=p;u.wd=T+hyp(p.x-u.x,p.y-u.y)/ST[u.t].spd*1.8+2}
@@ -178,7 +178,7 @@ function stepMove(u,dt){const p=u.path[0];if(!p)return;
   if(drv(u.x,u.y)&&!drv(nx,ny)){for(const[ax,ay]of[[nx,u.y],[u.x,ny]])if(drv(ax,ay)&&hyp(p.x-ax,p.y-ay)<d-.01){u.x=ax;u.y=ay;break}return}
   }
  if(forestAt(nx,ny))return;
- const bk=blockAt(u,nx,ny);if(bk){if(bk.f!=u.f&&ST[u.t].dmg&&!u.tgt){u.tgt=bk;u.auto=1}if(!rb){for(const[ax,ay]of[[nx,u.y],[u.x,ny]])if(!forestAt(ax,ay)&&!blockAt(u,ax,ay)&&!(isW(ax,ay)&&!isW(u.x,u.y))){u.x=ax;u.y=ay;break}}return}
+ const bk=blockAt(u,nx,ny);if(bk){if(bk.hp!==undefined&&bk.f!=u.f&&ST[u.t].dmg&&!u.tgt){u.tgt=bk;u.auto=1}if(!rb){for(const[ax,ay]of[[nx,u.y],[u.x,ny]])if(!forestAt(ax,ay)&&!blockAt(u,ax,ay)&&!(isW(ax,ay)&&!isW(u.x,u.y))){u.x=ax;u.y=ay;break}}return}
  u.x=nx;u.y=ny}
 /* tank traps stop every vehicle; checkpoints stop only enemy vehicles; infantry crosses trenches */
 function trenchHit(t,x,y){const a=t.a||{x:t.x-Math.cos(t.ang||0)*26,y:t.y-Math.sin(t.ang||0)*26},b=t.b||{x:t.x+Math.cos(t.ang||0)*26,y:t.y+Math.sin(t.ang||0)*26};return segD(x,y,a,b).d<t.r+2}
@@ -194,7 +194,7 @@ function truckStep(t,dt){const dw=ALLT.filter(x=>x.f==t.f).sort((p,q)=>hyp(p.x-t
  if(d<=s){t.x=m.x;t.y=m.y;t.cur=t.rt.shift();t.rv=0}else{const nx=t.x+dx/d*s,ny=t.y+dy/d*s;if(blockAt(t,nx,ny))return;t.x=nx;t.y=ny;t.ang=Math.atan2(dy,dx)}}
 function queue(p,t){if(!p||p.f<0||!F[p.f].alive||p.q.length>=4)return;if(F[p.f].oil<ST[t].cost)return;F[p.f].oil-=ST[t].cost;p.q.push(t)}
 function prod(e,dt){if(!e.q.length){e.qt=0;return}e.qt+=dt;if(e.qt>=4){e.qt=0;const u=unit(e.q.shift(),e.f,e.x+rnd(-40,40),e.y+(e.y<RY?60:-60));if(e.f==MYF)say(ST[u.t].n+' ready')}}
-function turret(e,dt){if(e.drop>0){e.drop-=dt;return}prod(e,dt);if(e.t=='town'&&e.gar<=0)return;const hq=e.t=='hq',s={dmg:hq?14:6+3*e.gar,rate:1,rng:hq?230:170,sp:450};
+function turret(e,dt){if(e.drop>0){e.drop-=dt;return}prod(e,dt);if(e.t=='town'&&e.gar<=0)return;const hq=!!e.isHQ,s={dmg:hq?14:6+3*e.gar,rate:1,rng:hq?230:170,sp:450};
  for(const u of E)if(u.u&&u.f==e.f&&u.t!='inf'&&u.hp<u.mhp&&hyp(u.x-e.x,u.y-e.y)<(hq?110:120))u.hp=Math.min(u.mhp,u.hp+(hq?4:6)*dt);
  if(e.cd<=0){const t=find(e,s.rng);if(t)fire(e,t,s,'tank')}}
 function unitAI(u,dt){const s=ST[u.t];if(u.drop>0){u.drop-=dt;return}if(u.t=='truck')return truckStep(u,dt);
@@ -205,7 +205,7 @@ function unitAI(u,dt){const s=ST[u.t];if(u.drop>0){u.drop-=dt;return}if(u.t=='tr
    if(d>need){if(!u.path.length||(T-u.rt>1&&!RB(u.t))){go(u,tx,ty,need*.7);if(RB(u.t)){const q=u.path[u.path.length-1];if(!q||hyp(q.x-tx,q.y-ty)>need+6){u.act=null;u.at=null;u.path=[]}}}}else{u.path=[];
     if(u.act=='gar'){if(t.gar<4){t.gar++;kill(u,1);return}u.act=null}
     else if(u.act=='blow'){u.w=(u.w||0)+dt;if(u.w>=3){u.w=0;if(t.hp>0)hurtB(t,9999);u.act=null}}
-    else if(u.act=='dig'){u.w=(u.w||0)+dt;if(u.w>=4){u.w=0;if(!isW(t.x,t.y)){const a={x:t.x-Math.cos(t.ang||0)*26,y:t.y-Math.sin(t.ang||0)*26},b={x:t.x+Math.cos(t.ang||0)*26,y:t.y+Math.sin(t.ang||0)*26};trenches.push({x:t.x,y:t.y,r:16,f:u.f,ang:t.ang||0,a,b});const m=trenches.filter(q=>q.f==u.f);if(m.length>80)trenches.splice(trenches.indexOf(m[0]),1);if(u.f==MYF&&!u.bq.length)say('Trench dug')}u.act=null}}
+    else if(u.act=='dig'){u.w=(u.w||0)+dt;if(u.w>=4){u.w=0;if(!isW(t.x,t.y)&&!trenchOnRoad(t)){const a={x:t.x-Math.cos(t.ang||0)*26,y:t.y-Math.sin(t.ang||0)*26},b={x:t.x+Math.cos(t.ang||0)*26,y:t.y+Math.sin(t.ang||0)*26};trenches.push({x:t.x,y:t.y,r:16,f:u.f,ang:t.ang||0,a,b});const m=trenches.filter(q=>q.f==u.f);if(m.length>80)trenches.splice(trenches.indexOf(m[0]),1);if(u.f==MYF&&!u.bq.length)say('Trench dug')}u.act=null}}
     else if(u.act=='cut'){u.w=(u.w||0)+dt;if(u.w>=3){u.w=0;const r=roadAt(t.x,t.y);if(r){const c=!r.e.cut,re=r.e.n.a.find(q=>q.n==r.n);r.e.cut=re.cut=c;r.e.cx=re.cx=r.x;r.e.cy=re.cy=r.y;fx(r.x,r.y,40);say(c?'Road blown':'Road repaired')}u.act=null}}
     else if(u.act=='build'){t.prog=Math.min(1,t.prog+dt/t.bt);t.hp=Math.max(t.hp,t.mhp*(.25+.75*t.prog));if(t.prog>=1){finishDef(t);u.act=null;if(u.f==MYF)say(DEF[t.k].n+' complete')}}
     else if(u.act=='road'){t.prog=Math.min(1,t.prog+dt/t.bt);if(t.prog>=1){t.site=0;u.act=null;if(u.f==MYF)say('Makeshift road complete')}}
@@ -235,8 +235,8 @@ function aiThink(f){const me=F[f],hq=hqs[f],ms=E.filter(e=>e.f==f&&e.u&&e.t!='tr
   const own=rigs.filter(r=>r.f==f),pt=own.length&&Math.random()<.7?own[rnd(0,own.length)|0]:hq;u.post={x:pt.x+rnd(-90,90),y:pt.y+rnd(-90,90)};go(u,u.post.x,u.post.y)}}
 function pickAt(x,y){let b=null,bd=1e9;for(const e of E){const d=hyp(e.x-x,e.y-y);if(d<(e.u?14:e.r)+6/cam.z&&d<bd&&(e.f==MYF||seen(MYF,e))){b=e;bd=d}}
  if(!b&&MAP!='snow')for(const br of bridges)if(Math.abs(x-br.x)<46&&Math.abs(y-RY)<66)b=br;return b}
-function order(x,y){const t=pickAt(x,y),silo=sel.find(e=>e.def&&e.k=='silo'&&e.f==MYF&&!e.site);
- if(silo){if(hyp(x-silo.x,y-silo.y)>DEF.silo.rng){say('Target is out of missile range');return}if(!seen(0,{x,y,s:1,f:-1})){say('Target area is not visible');return}launchBarrage(silo,x,y);return}
+function order(x,y){const t=pickAt(x,y),silo=sel.length==1&&sel[0].def&&sel[0].k=='silo'&&sel[0].f==MYF&&!sel[0].site?sel[0]:null;
+ if(silo){if(hyp(x-silo.x,y-silo.y)>DEF.silo.rng){say('Target is out of missile range');return}if(!seen(MYF,{x,y,s:1,f:-1})){say('Target area is not visible');return}launchBarrage(silo,x,y);return}
  const us=sel.filter(e=>e.u&&e.f==MYF&&e.t!='truck');if(!us.length)return;
  if(t&&t.t=='mcv'&&t.f==MYF&&us.includes(t)){deploy(t);return}
  fx(x,y,10);
@@ -271,7 +271,7 @@ function defTarget(e,d){let b=null,bd=d.rng+1;for(const t of E){if(t.f<0||t.f==e
   if(t.u){if(d.vs&&!d.vs.includes(t.t))continue}else if(d.vs||!(t.def&&!t.site&&(t.gun||t.blk)))continue;
   if(!seen(e.f,t))continue;const q=hyp(t.x-e.x,t.y-e.y)-(t.u?0:t.r);if(q<(d.min||0)||q>d.rng)continue;if(q<bd){bd=q;b=t}}return b}
 function defAI(e,dt){const d=DEF[e.k];
- if(d.cram){if(e.cd<=0){let b=null,bd=d.rng;for(const p of P){if(p.f==e.f||!p.rk)continue;const q=hyp(p.x-e.x,p.y-e.y);if(q<bd){bd=q;b=p}}
+ if(d.cram){if(e.cd<=0){let b=null,bd=d.rng;for(const p of P){if(p.f==e.f||!p.rk||p.delay>0)continue;const q=hyp(p.x-e.x,p.y-e.y);if(q<bd){bd=q;b=p}}
    if(b){P.splice(P.indexOf(b),1);fx(b.x,b.y,16);e.gang=Math.atan2(b.y-e.y,b.x-e.x);e.cd=d.rate}}return}
  if(!d.dmg)return;
  if(T>(e.sc||0)){e.sc=T+.25;e.ft=defTarget(e,d)}
@@ -315,8 +315,8 @@ addEventListener('mouseup',e=>{if(e.button==1)mouse.pan=null;if(e.button!=0||!mo
  if(placing){mouse.stroke=stroke;placeDrag(a,b,e.shiftKey);mouse.stroke=null;return}
  if(hyp(e.clientX-d.x,e.clientY-d.y)<6){const t=pickAt(b.x,b.y),ns=t&&t.f==MYF&&!t.isB?[t]:[];sel=e.shiftKey?[...new Set([...sel,...ns])]:ns}
  else{const x0=Math.min(a.x,b.x),x1=Math.max(a.x,b.x),y0=Math.min(a.y,b.y),y1=Math.max(a.y,b.y),r=E.filter(u=>u.f==MYF&&u.u&&u.x>x0&&u.x<x1&&u.y>y0&&u.y<y1);sel=e.shiftKey?[...new Set([...sel,...r])]:r}});
-C.addEventListener('wheel',e=>{e.preventDefault();const p=w2(e.clientX,e.clientY);cam.z=cl(cam.z*(e.deltaY<0?1.1:.9),.4,2.5);cam.x=p.x-e.clientX/cam.z;cam.y=p.y-e.clientY/cam.z},{passive:false});
-addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(e.ctrlKey&&/^[1-5]$/.test(k)){e.preventDefault();grp[k]=sel.map(s=>s.id);return}
+C.addEventListener('wheel',e=>{e.preventDefault();const p=w2(e.clientX,e.clientY);cam.z=cl(cam.z*(e.deltaY<0?1.1:.9),.2,2.5);cam.x=p.x-e.clientX/cam.z;cam.y=p.y-e.clientY/cam.z},{passive:false});
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if((e.ctrlKey||e.altKey)&&/^Digit[1-5]$/.test(e.code)){e.preventDefault();grp[e.code[5]]=sel.map(s=>s.id);return}
  if(/^[1-5]$/.test(k)){sel=E.filter(s=>(grp[k]||[]).includes(s.id));return}
  if(k==' '){e.preventDefault();const hp=hqs[MYF].dormant?(E.find(u=>u.t=='mcv'&&u.f==MYF)||hqs[MYF]):hqs[MYF];cam.x=hp.x-C.width/cam.z/2;cam.y=hp.y-C.height/cam.z/2;return}
  if(k=='h'){const m=sel.find(s=>s.t=='mcv');if(m){deploy(m);return}}
@@ -364,23 +364,23 @@ function trenchPts(points){
  const last=clean[clean.length-1],prev=clean[clean.length-2];if(hyp(last.x-out[out.length-1].x,last.y-out[out.length-1].y)>LINE.trench*.35)out.push({x:last.x,y:last.y,ang:Math.atan2(last.y-prev.y,last.x-prev.x)});
  return out;
 }
-function trenchDragPoints(a,b){return mouse.stroke&&mouse.stroke.length>1?trenchPts(mouse.stroke):trenchPts([a,b])}
+function trenchDragPoints(a,b){return mouse.stroke&&mouse.stroke.length>1?trenchPts(mouse.stroke):a?trenchPts([a,b]):trenchPts([b])}
 function draggableTrenchAngle(a,b,ls,p){return a&&hyp(b.x-a.x,b.y-a.y)>=LINE.trench*.8?ls.ang:p.rot*Math.PI/2}
 function drawLine(g){if(!placing)return 0;const k=placing.k,sp=LINE[k];if(!sp)return 0;
  const p=w2(mouse.x,mouse.y),dr=mouse.drag,ls=dr?linePts(w2(dr.x,dr.y),p,sp):{p:[p],ang:0,n:0};
  if(k!='trench'&&!ls.n)return 0;placing.chk=null;
  if(k=='road'&&dr){const ok=roadCheck(w2(dr.x,dr.y).x,w2(dr.x,dr.y).y)&&roadCheck(p.x,p.y);g.save();g.globalAlpha=.65;g.lineCap='butt';g.strokeStyle=ok?(MAP=='snow'?'#d6dddd':'#a18358'):'#e54';g.lineWidth=20;g.beginPath();g.moveTo(w2(dr.x,dr.y).x,w2(dr.x,dr.y).y);g.lineTo(p.x,p.y);g.stroke();g.restore();return 1}
  const trenchAng=draggableTrenchAngle(dr&&w2(dr.x,dr.y),p,ls,placing),trenchPath=k=='trench'?trenchDragPoints(dr&&w2(dr.x,dr.y),p):null;
- for(const q of k=='trench'?trenchPath:ls.p){if(k=='trench'){g.save();g.translate(q.x,q.y);g.rotate(q.ang||trenchAng);g.globalAlpha=.6;R(g,-26,-5,52,10,isW(q.x,q.y)?'#a33':'#5a4a30');g.restore();g.globalAlpha=1}
+ for(const q of k=='trench'?trenchPath:ls.p){if(k=='trench'){g.save();g.translate(q.x,q.y);g.rotate(q.ang||trenchAng);g.globalAlpha=.6;R(g,-26,-5,52,10,isW(q.x,q.y)||trenchOnRoad({x:q.x,y:q.y,ang:q.ang||trenchAng})?'#a33':'#5a4a30');g.restore();g.globalAlpha=1}
   else{const c=placeCheck(k,q.x,q.y);drawD(g,{k,x:c.x,y:c.y,rot:k=='trap'?0:ls.ang,gang:-Math.PI/2},0,c.ok?.7:.3);g.strokeStyle=c.ok?'#8f8':'#e54';g.lineWidth=1.5;g.beginPath();g.arc(c.x,c.y,12,0,6.28);g.stroke()}}
  return 1}
 function placeDrag(a,b,keep){const k=placing.k,sp=LINE[k],us=sel.filter(u=>u.t=='eng'&&u.f==MYF);
  if(!us.length){say('Select an engineer to build');placing=null;return}
- const ls=sp?linePts(a,b,sp):{p:[b],ang:0,n:0};if(k!='trench'&&!ls.n)return place(b.x,b.y,keep);
+ const ls=sp?linePts(a,b,sp):{p:[b],ang:0,n:0};if(k=='road'&&!ls.n){say('Drag to lay a road');return}if(k!='trench'&&!ls.n)return place(b.x,b.y,keep);
  const d=DEF[k]||{},jobs=[];let bad=0,poor=0;
  if(k=='road'){if(!roadCheck(a.x,a.y)||!roadCheck(b.x,b.y)){say('Makeshift roads need dry ground');return}if(F[MYF].oil<15){say('Not enough oil');return}F[MYF].oil-=15;const r=mkRoad(a,b,1),u=us[0];cmd(u);u.act='road';u.at={x:(a.x+b.x)/2,y:(a.y+b.y)/2,road:r,site:1};u.at=r;u.w=0;say('Building makeshift road');if(!keep)placing=null;return}
  const trenchAng=draggableTrenchAngle(a,b,ls,placing),trenchPath=k=='trench'?trenchDragPoints(a,b):null;
- for(const q of k=='trench'?trenchPath:ls.p){if(k=='trench'){if(isW(q.x,q.y)||(MAP!='snow'&&Math.abs(q.y-RY)<80)){bad++;continue}jobs.push({x:q.x,y:q.y,t:'pt',pt:1,ang:q.ang||trenchAng});continue}
+ for(const q of k=='trench'?trenchPath:ls.p){if(k=='trench'){if(isW(q.x,q.y)||(MAP!='snow'&&Math.abs(q.y-RY)<80)||trenchOnRoad({x:q.x,y:q.y,ang:q.ang||trenchAng})){bad++;continue}jobs.push({x:q.x,y:q.y,t:'pt',pt:1,ang:q.ang||trenchAng});continue}
   const c=placeCheck(k,q.x,q.y);if(!c.ok){bad++;continue}if(F[MYF].oil<d.cost){poor=1;break}F[MYF].oil-=d.cost;jobs.push(mkDef(k,MYF,c.x,c.y,k=='trap'?0:ls.ang,1))}
  jobs.forEach((j,i)=>{const u=us[i%us.length],busy=buildBusy(u)||(u.act=='dig'&&u.at&&u.at.pt);
   if(busy)(u.bq=u.bq||[]).push(j);else{cmd(u);u.act=j.pt?'dig':'build';u.at=j;u.w=0}});
@@ -421,7 +421,7 @@ function update(dt){T+=dt;updWx(dt);updHeli(dt);
  const us=E.filter(e=>e.u);for(const t of us)if(t.t=='truck'&&!t.dead)for(const u of us)if(u.f!=t.f&&u.t!='truck'&&!(u.drop>0)&&hyp(u.x-t.x,u.y-t.y)<18){kill(t);if(u.f==MYF)say('Enemy fuel truck intercepted - grab the oil!');break}
  for(let i=0;i<us.length;i++)for(let j=i+1;j<us.length;j++){const a=us[i],b=us[j],d=hyp(a.x-b.x,a.y-b.y);if(d<16&&d>.01&&a.f!=b.f){const p=(16-d)/2,dx=(a.x-b.x)/d*p,dy=(a.y-b.y)/d*p;if(!isW(a.x+dx,a.y+dy)||isW(a.x,a.y)){a.x+=dx;a.y+=dy}if(!isW(b.x-dx,b.y-dy)||isW(b.x,b.y)){b.x-=dx;b.y-=dy}}}
  for(const r of [...rigs,...towns,...hqs]){if(r.dormant)continue;const fs=new Set();for(const u of us)if(u.t!='truck'&&u.t!='art'&&u.t!='mcv'&&hyp(u.x-r.x,u.y-r.y)<60)fs.add(u.f);
-  if(fs.size==1){const f=[...fs][0];if(f!=r.f){if(r.cf!=f){r.cf=f;r.cap=0}r.cap+=dt/(r.t=='rig'?6:7);if(r.cap>=1){r.f=f;r.cap=0;r.gar=0;r.tm=6;if(r.q)r.q.length=0;if(f==MYF)say('Captured '+r.t)}}else r.cap=Math.max(0,r.cap-dt*.5)}else if(!fs.size)r.cap=Math.max(0,r.cap-dt*.3)}
+  if(fs.size==1){const f=[...fs][0];if(f!=r.f){if(r.cf!=f){r.cf=f;r.cap=0}r.cap+=dt/(r.t=='rig'?6:7);if(r.cap>=1){const old=r.f;if(r.q&&old>=0&&F[old])for(const q of r.q)F[old].oil+=ST[q].cost;r.f=f;r.cap=0;r.gar=0;r.tm=6;if(r.q)r.q.length=0;if(f==MYF)say('Captured '+r.t)}}else r.cap=Math.max(0,r.cap-dt*.5)}else if(!fs.size)r.cap=Math.max(0,r.cap-dt*.3)}
  for(const r of rigs)if(r.f>=0&&!r.tk&&F[r.f].alive){r.tm-=dt;if(r.tm<=0){const t=unit('truck',r.f,r.x,r.y);t.cur=r.nd;t.rt=[];t.src=r;r.tk=t;r.tm=6}}
  for(let i=CR.length;i--;){const c=CR[i];c.l-=dt;const u=us.find(u=>u.t!='truck'&&hyp(u.x-c.x,u.y-c.y)<28);if(u){F[u.f].oil+=c.o;CR.splice(i,1)}else if(c.l<=0)CR.splice(i,1)}
  for(let i=P.length;i--;){const p=P[i];if(p.delay>0){p.delay-=dt;continue}if(p.tg&&p.tg.hp>0){p.tx=p.tg.x;p.ty=p.tg.y}const dx=p.tx-p.x,dy=p.ty-p.y,d=hyp(dx,dy),s=p.sp*dt;if(d<=s+4){impact(p);P.splice(i,1)}else{p.x+=dx/d*s;p.y+=dy/d*s;if(p.rk&&(p.sm=(p.sm||0)+dt)>.05){p.sm=0;FX.push({x:p.x,y:p.y,r:0,t:0,k:'smoke'})}}}
@@ -429,9 +429,7 @@ function update(dt){T+=dt;updWx(dt);updHeli(dt);
  aiT-=dt;if(aiT<=0){aiT=1;for(const f of F)if(f.alive&&!over&&!E.some(e=>e.f==f.i&&e.u&&e.t!='truck')&&!ALLT.some(t=>t.f==f.i)&&!HE.some(h=>h.f==f.i))elim(f.i)}
  visT-=dt;if(visT<=0){visT=.2;updVis();updGh(.2);updFog()}
  if(!over) for(const f of F)if(f.i&&f.i!=MYF&&f.alive){f.at-=dt;if(f.at<=0){f.at=1.5;aiThink(f.i)}}
- const sp=700*dt/cam.z,m=24;let mx=0,my=0;if(keys.a||keys.arrowleft)mx=-1;if(keys.d||keys.arrowright)mx=1;if(keys.w||keys.arrowup)my=-1;if(keys.s||keys.arrowdown)my=1;
- if(mouse.in&&!mouse.drag){if(mouse.x<m)mx=-1;if(mouse.x>C.width-m)mx=1;if(mouse.y<m)my=-1;if(mouse.y>C.height-m-80)my=1}
- cam.x=cl(cam.x+mx*sp,-200,W-C.width/cam.z+200);cam.y=cl(cam.y+my*sp,-200,W-C.height/cam.z+200);
+ camStep(dt);
  if(msgT>0){msgT-=dt;if(msgT<=0)$('msg').textContent=''}}
 function R(g,x,y,w,h,c){g.fillStyle=c;g.fillRect(x,y,w,h)}
 /* hi-res (2x) sprites are drawn at half scale with smoothing; old 1x sprites stay pixel-crisp */
@@ -455,7 +453,7 @@ function draw(){const g=X,z=cam.z,vw=C.width/z,vh=C.height/z;g.setTransform(1,0,
   if(tool=='cut'){const q=roadAt(p.x,p.y);if(q){const col=q.e.cut?'90,230,120':'255,200,60',a=q.n,b=q.e.n;g.lineCap='butt';g.strokeStyle='rgba('+col+',.35)';g.lineWidth=20;g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.stroke();
    g.strokeStyle='rgba('+col+',.9)';g.lineWidth=2;g.setLineDash([6,4]);g.stroke();g.setLineDash([]);
    g.beginPath();g.arc(q.x,q.y,16,0,6.28);g.moveTo(q.x-22,q.y);g.lineTo(q.x+22,q.y);g.moveTo(q.x,q.y-22);g.lineTo(q.x,q.y+22);g.stroke()}}}
- if(placing&&mouse.in&&!dropping&&!drawLine(g)){const p=w2(mouse.x,mouse.y),c=placeCheck(placing.k,p.x,p.y),d=DEF[placing.k];placing.chk=c;g.lineWidth=1.5;g.setLineDash([6,5]);
+ if(placing&&mouse.in&&!dropping&&!drawLine(g)&&DEF[placing.k]){const p=w2(mouse.x,mouse.y),c=placeCheck(placing.k,p.x,p.y),d=DEF[placing.k];placing.chk=c;g.lineWidth=1.5;g.setLineDash([6,5]);
   if(d.rng){g.strokeStyle='rgba(255,255,255,.4)';g.beginPath();g.arc(c.x,c.y,d.rng,0,6.28);g.stroke()}
   if(d.min){g.strokeStyle='rgba(255,90,70,.5)';g.beginPath();g.arc(c.x,c.y,d.min,0,6.28);g.stroke()}
   if(d.cover){g.strokeStyle='rgba(120,230,120,.5)';g.beginPath();g.arc(c.x,c.y,d.cover,0,6.28);g.stroke()}
@@ -478,7 +476,7 @@ function draw(){const g=X,z=cam.z,vw=C.width/z,vh=C.height/z;g.setTransform(1,0,
     g.strokeStyle='#fff';g.beginPath();g.arc(tx,ty,9,T*8,T*8+1.8);g.stroke()}}
   if(sel.includes(e)&&e.path.length){g.strokeStyle='rgba(255,255,255,.25)';g.beginPath();g.moveTo(e.x,e.y);for(const p of e.path)g.lineTo(p.x,p.y);g.stroke()}}
  for(const e of sel)if(!e.u&&e.f==MYF){g.strokeStyle='#fff';g.strokeRect(e.x-e.r-4,e.y-e.r-4,e.r*2+8,e.r*2+8)}
- for(const p of P){const h=p.ar?Math.sin(Math.PI*(1-hyp(p.tx-p.x,p.ty-p.y)/Math.max(1,p.tot)))*50:0;if(vi(MYF,p.x,p.y)<2&&p.f!=MYF)continue;if(p.rk)spr(g,'rocket',p.f,p.x,p.y-h,Math.atan2(p.ty-p.sy,p.tx-p.sx)+Math.PI/2,.9);else R(g,p.x-2,p.y-2,4,4,'#ffe')}
+ for(const p of P){if(p.delay>0)continue;const h=p.ar?Math.sin(Math.PI*(1-hyp(p.tx-p.x,p.ty-p.y)/Math.max(1,p.tot)))*50:0;if(vi(MYF,p.x,p.y)<2&&p.f!=MYF)continue;if(p.rk)spr(g,'rocket',p.f,p.x,p.y-h,Math.atan2(p.ty-p.sy,p.tx-p.sx)+Math.PI/2,.9);else R(g,p.x-2,p.y-2,4,4,'#ffe')}
  for(const f of FX){if(vi(MYF,f.x,f.y)<1)continue;if(f.k){g.globalAlpha=.8*(1-f.t);spr(g,'smokePuff',0,f.x,f.y,0,1.5)}else{g.globalAlpha=1;spr(g,'explosion'+Math.min(6,Math.floor(f.t*7)),0,f.x,f.y,0,cl(f.r/16,.7,4))}g.globalAlpha=1}
  for(const h of HE){spr(g,'heliTrans',h.f,h.x,h.y,h.ang+Math.PI/2,2);spr(g,'heliRotor',0,h.x,h.y,h.k*30,2)}
  if(MAP!='snow')cloudsW(g,vw,vh,'b');
@@ -497,5 +495,17 @@ for(const h of hqs){if(!h.f)continue;unit('scout',h.f,h.x+50,h.y+(h.y<RY?70:-70)
 updVis();F[MYF].vis.fill(2);updGh(0);updFog();cam.z=Math.max(.2,Math.min(C.width/W,(C.height-90)/W));cam.x=(W-C.width/cam.z)/2;cam.y=(W-C.height/cam.z)/2;
 document.querySelectorAll('#mapMenu button').forEach(b=>b.addEventListener('click',()=>{$('mapMenu').style.display='none';applyMap(b.dataset.map);dropping=1;sel=[];cam.z=Math.max(.2,Math.min(C.width/W,(C.height-90)/W));cam.x=(W-C.width/cam.z)/2;cam.y=(W-C.height/cam.z)/2;say(b.dataset.map=='snow'?'Vietnam Jungle selected':'Desert Front selected')}));
 let last=performance.now(),hT=0;
-function loop(n){const dt=Math.min(.05,(n-last)/1000);last=n;fr++;if(!dropping&&(!over||fr%2))update(dt);draw();hT-=dt;if(hT<=0){hT=.15;hud()}requestAnimationFrame(loop)}
+/*fixpatch-v1*/
+function roadNear(x,y,m){for(const s of segs()){if(s.br&&s.br.hp<=0)continue;if(segD(x,y,s.a,s.b).d<m)return 1}for(const r of MRS)if(!r.site&&!r.hq&&segD(x,y,r.a,r.b).d<m)return 1;return 0}
+function trenchOnRoad(t){const c=Math.cos(t.ang||0)*26,s=Math.sin(t.ang||0)*26;for(const[px,py]of[[t.x,t.y],[t.x-c,t.y-s],[t.x+c,t.y+s]])if(drv(px,py)||roadNear(px,py,24))return 1;return 0}
+function camStep(dt){const sp=700*dt/cam.z,m=24;let mx=0,my=0;
+ if(keys.a||keys.arrowleft)mx=-1;if(keys.d||keys.arrowright)mx=1;if(keys.w||keys.arrowup)my=-1;if(keys.s||keys.arrowdown)my=1;
+ if(mouse.in&&!mouse.drag){if(mouse.x<m)mx=-1;if(mouse.x>C.width-m)mx=1;if(mouse.y<m)my=-1;if(mouse.y>C.height-m-80)my=1}
+ const cc=(v,vs)=>{const hi=W-vs+200;return hi<-200?(W-vs)/2:cl(v,-200,hi)};
+ cam.x=cc(cam.x+mx*sp,C.width/cam.z);cam.y=cc(cam.y+my*sp,C.height/cam.z)}
+const warn=(()=>{let n=0;return(w,e)=>{if(n++<5)console.error(w,e)}})();
+function loop(n){requestAnimationFrame(loop);const dt=Math.min(.05,(n-last)/1000);last=n;fr++;
+ try{if(!dropping){if(over)camStep(dt);else update(dt)}}catch(e){warn('update',e)}
+ try{draw()}catch(e){warn('draw',e)}
+ hT-=dt;if(hT<=0){hT=.15;try{hud()}catch(e){warn('hud',e)}}}
 requestAnimationFrame(loop);say('Capture oil rigs. Protect your fuel trucks. Space = HQ');
