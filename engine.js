@@ -160,6 +160,7 @@ function rpath(u,tx,ty){const p0=nearRoad(u.x,u.y),p1=nearRoad(tx,ty);if(!p0||!p
  return best?[{x:p0.x,y:p0.y},...best.w.map(n=>({x:n.x,y:n.y})),end]:[]}
 function go(u,x,y,stop){u.path=RB(u.t)?rpath(u,x,y):plan(u.x,u.y,x,y);u.stop=stop||6;u.rt=T;u.pg={x,y}}
 function cmd(u){u.act=null;u.at=null;u.tgt=null;u.path=[];u.bq=[]}
+function buildBusy(u){return !!(u.act=='build'&&u.at&&u.at.site&&!u.at.dead)||(u.bq&&u.bq.length>0)}
 function stepMove(u,dt){const p=u.path[0];if(!p)return;
  /* stuck watchdog for road-bound units: if a waypoint takes far too long, snap to the road and re-plan */
  if(RB(u.t)){if(u.wp!==p){u.wp=p;u.wd=T+hyp(p.x-u.x,p.y-u.y)/ST[u.t].spd*1.8+2}
@@ -247,7 +248,7 @@ const DS=1.5;
 function placeCheck(k,x,y){const d=DEF[k],r=(d.r||8)*DS;let rt=null;
  if(x<50||x>W-50||y<50||y>W-50)return{ok:0,m:'Out of bounds',x,y};
  if(d.ter!='road'&&!d.anyGround&&(isW(x,y)||(MAP!='snow'&&Math.abs(y-RY)<80)))return{ok:0,m:'Cannot build on the river',x,y};
- if(d.ter=='road'){if(isW(x,y)||!drv(x,y))return{ok:0,m:'Tank traps go on roads',x,y};const q=roadAt(x,y);if(q&&hyp(q.x-x,q.y-y)<16){x=q.x;y=q.y;rt=Math.atan2(q.e.n.y-q.n.y,q.e.n.x-q.n.x)}}
+ if(d.ter=='road'){if(isW(x,y)||!drv(x,y))return{ok:0,m:'Road defences go on roads',x,y};const q=roadSurfaceAt(x,y);if(q&&hyp(q.x-x,q.y-y)<16){x=q.x;y=q.y;rt=q.rot}}
  else if(!d.anyGround){if(drv(x,y))return{ok:0,m:'Cannot build on a road',x,y};if(d.ter=='sand'&&gband(x,y)<3)return{ok:0,m:'Needs bare sand (the pale ground)',x,y}}
  if(d.ter!='road'){for(const e of rigs)if(hyp(e.x-x,e.y-y)<24+r+6)return{ok:0,m:'Too close to an oil rig',x,y};
   for(const e of ALLT){const w=e.capital?(e.kw||160):96,h=e.capital?(e.kh||128):84;if(x>e.kx-r&&x<e.kx+w+r&&y>e.ky-r&&y<e.ky+h+r)return{ok:0,m:'Too close to a town',x,y}}}
@@ -271,7 +272,7 @@ function place(x,y,keep){const k=placing.k,d=DEF[k],us=sel.filter(u=>u.t=='eng'&
  if(!us.length){say('Select an engineer to build');placing=null;return}
  const c=placeCheck(k,x,y,placing.rot);if(!c.ok){say(c.m);return}
  if(F[0].oil<d.cost){say('Not enough oil');return}
- F[0].oil-=d.cost;const st=mkDef(k,0,c.x,c.y,c.rot!=null?c.rot:placing.rot*Math.PI/2,1);for(const u of us){if(u.act=='build'&&u.at&&u.at.site&&!u.at.dead){(u.bq=u.bq||[]).push(st)}else{cmd(u);u.act='build';u.at=st}}
+ F[0].oil-=d.cost;const st=mkDef(k,0,c.x,c.y,c.rot!=null?c.rot:placing.rot*Math.PI/2,1);for(const u of us){if(buildBusy(u))(u.bq=u.bq||[]).push(st);else{cmd(u);u.act='build';u.at=st}}
  fx(c.x,c.y,10);say('Building '+d.n);if(!keep)placing=null}
 function drawD(g,e,tm,a){const d=DEF[e.k];g.globalAlpha=a*(e.site?.5:1);
  if(d.spr)spr(g,e.k=='silo'&&e.cd>d.rate-3?'missileSiloOpen':d.spr,tm,e.x,e.y,e.rot||0,DS);else{spr(g,d.base,tm,e.x,e.y,0,DS);spr(g,d.gun,tm,e.x,e.y,(e.gang==null?-Math.PI/2:e.gang)+Math.PI/2,DS)}g.globalAlpha=1}
@@ -286,7 +287,7 @@ const bt=$('btns');ORDER.forEach(t=>{const b=document.createElement('button');b.
   st=d.dmg?' | range '+d.rng+', '+d.dmg+' dmg':d.cram?' | shoots down rockets':d.vis?' | sees far':d.cover?' | cover for infantry':d.gate?' | blocks enemy vehicles only':d.blk?' | blocks ALL vehicles':'';
   b.innerHTML=d.n+' <b>'+d.cost+'</b><br><small style="opacity:.7">'+tr+st+(LINE[k]?' | drag for a line':'')+'</small>';
   b.onclick=()=>{placing={k,rot:0};menu=0;tool=null;say((LINE[k]?'Click, or drag a line, to place ':'Click to place ')+d.n+(d.rot?' (Z rotates)':'')+' - right-click cancels')};dm.appendChild(b)})}
-[['cut','C Cut road','cut'],['dig','V Dig trench','dig']].forEach(([id,txt,tl])=>{const b=document.createElement('button');b.id='b_'+id;b.textContent=txt;b.style.display='none';b.onclick=()=>{if(tl=='dig'){placing={k:'trench',rot:0};menu=0;tool=null;say('Hold the left mouse button and drag to keep digging (shift keeps the tool ready)');return}tool=tool==tl?null:tl;say(tool?'Right-click a road to blow/repair it':'')};bt.appendChild(b)});
+[['cut','C Cut road','cut'],['dig','V Dig trench','dig']].forEach(([id,txt,tl])=>{const b=document.createElement('button');b.id='b_'+id;b.textContent=txt;b.style.display='none';b.onclick=()=>{if(tl=='dig'){placing={k:'trench',rot:0};menu=0;tool=null;say('Hold the left mouse button and drag to keep digging (Z rotates single trenches, shift keeps the tool ready)');return}tool=tool==tl?null:tl;say(tool?'Right-click a road to blow/repair it':'')};bt.appendChild(b)});
 {const db=document.createElement('button');db.id='b_dep';db.textContent='H Deploy HQ';db.style.display='none';db.onclick=()=>deploy(sel.find(e=>e.t=='mcv'));bt.appendChild(db)}
 function hud(){const mine=E.filter(e=>e.f==0),tr=mine.filter(e=>e.t=='truck').length;
  $('top').innerHTML=`<span>Oil <b>${F[0].oil|0}</b></span><span>Rigs <b>${rigs.filter(r=>r.f==0).length}</b>/${rigs.length}</span><span>Trucks en route <b>${tr}</b></span><span>Factions <b>${F.filter(f=>f.alive).length}</b>/5</span><span>Weather <b>${WX.kind=='clear'?(MAP=='snow'?'Mist':'Clear'):WX.kind=='rain'?'Rain':WX.kind=='fog'?'Heavy Fog':'Sandstorm'}</b></span>`;
@@ -310,8 +311,8 @@ addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(e.ctrlKey&&/^[1-5]
  if(/^[1-5]$/.test(k)){sel=E.filter(s=>(grp[k]||[]).includes(s.id));return}
  if(k==' '){e.preventDefault();const hp=hqs[0].dormant?(E.find(u=>u.t=='mcv'&&u.f==0)||hqs[0]):hqs[0];cam.x=hp.x-C.width/cam.z/2;cam.y=hp.y-C.height/cam.z/2;return}
  if(k=='h'){const m=sel.find(s=>s.t=='mcv');if(m){deploy(m);return}}
- if(k=='escape'){tool=null;placing=null;menu=0}if(k=='b'&&sel.some(s=>s.t=='eng')){menu=menu?0:1;placing=null;tool=null;return}if(k=='z'&&placing&&DEF[placing.k]&&DEF[placing.k].rot){placing.rot=(placing.rot+1)%4;return}
- if(k=='v'&&sel.some(s=>s.t=='eng')){placing={k:'trench',rot:0};menu=0;tool=null;say('Hold the left mouse button and drag to keep digging (shift keeps the tool ready)');return}
+ if(k=='escape'){tool=null;placing=null;menu=0}if(k=='b'&&sel.some(s=>s.t=='eng')){menu=menu?0:1;placing=null;tool=null;return}if(k=='z'&&placing&&(placing.k=='trench'||(DEF[placing.k]&&DEF[placing.k].rot))){placing.rot=(placing.rot+1)%4;return}
+ if(k=='v'&&sel.some(s=>s.t=='eng')){placing={k:'trench',rot:0};menu=0;tool=null;say('Hold the left mouse button and drag to keep digging (Z rotates single trenches, shift keeps the tool ready)');return}
  if(k=='c'&&sel.some(s=>s.t=='eng')){placing=null;menu=0;tool='cut';say('Right-click a road to blow/repair it');return}
  if((k=='delete'||k=='x')&&sel.some(s=>s.def&&s.f==0)){for(const d of sel.filter(s=>s.def&&s.f==0))kill(d,1);say('Defence removed');return}
  const pr=producer(),i='qfertg'.indexOf(k);if(pr&&i>=0&&!e.ctrlKey){queue(pr,ORDER[i]);return}keys[k]=1});
@@ -345,11 +346,13 @@ function drawWx(g){const w=C.width,h=C.height,j=MAP=='snow';
 /* ---- Drag-a-line building (sandbags, tank traps, trenches) ---- */
 function linePts(a,b,sp){const L=hyp(b.x-a.x,b.y-a.y),ang=Math.atan2(b.y-a.y,b.x-a.x),n=L<sp*.8?0:Math.floor(L/sp),p=[];
  for(let i=0;i<=n;i++)p.push(n?{x:a.x+Math.cos(ang)*i*sp,y:a.y+Math.sin(ang)*i*sp}:{x:b.x,y:b.y});return{p,ang:n?ang:0,n}}
+function draggableTrenchAngle(a,b,ls,p){return a&&hyp(b.x-a.x,b.y-a.y)>=LINE.trench*.8?ls.ang:p.rot*Math.PI/2}
 function drawLine(g){if(!placing)return 0;const k=placing.k,sp=LINE[k];if(!sp)return 0;
  const p=w2(mouse.x,mouse.y),dr=mouse.drag,ls=dr?linePts(w2(dr.x,dr.y),p,sp):{p:[p],ang:0,n:0};
  if(k!='trench'&&!ls.n)return 0;placing.chk=null;
  if(k=='road'&&dr){const ok=roadCheck(w2(dr.x,dr.y).x,w2(dr.x,dr.y).y)&&roadCheck(p.x,p.y);g.save();g.globalAlpha=.65;g.lineCap='butt';g.strokeStyle=ok?(MAP=='snow'?'#d6dddd':'#a18358'):'#e54';g.lineWidth=20;g.beginPath();g.moveTo(w2(dr.x,dr.y).x,w2(dr.x,dr.y).y);g.lineTo(p.x,p.y);g.stroke();g.restore();return 1}
- for(const q of ls.p){if(k=='trench'){g.save();g.translate(q.x,q.y);g.rotate(ls.ang);g.globalAlpha=.6;R(g,-26,-5,52,10,isW(q.x,q.y)?'#a33':'#5a4a30');g.restore();g.globalAlpha=1}
+ const trenchAng=draggableTrenchAngle(dr&&w2(dr.x,dr.y),p,ls,placing);
+ for(const q of ls.p){if(k=='trench'){g.save();g.translate(q.x,q.y);g.rotate(trenchAng);g.globalAlpha=.6;R(g,-26,-5,52,10,isW(q.x,q.y)?'#a33':'#5a4a30');g.restore();g.globalAlpha=1}
   else{const c=placeCheck(k,q.x,q.y);drawD(g,{k,x:c.x,y:c.y,rot:k=='trap'?0:ls.ang,gang:-Math.PI/2},0,c.ok?.7:.3);g.strokeStyle=c.ok?'#8f8':'#e54';g.lineWidth=1.5;g.beginPath();g.arc(c.x,c.y,12,0,6.28);g.stroke()}}
  return 1}
 function placeDrag(a,b,keep){const k=placing.k,sp=LINE[k],us=sel.filter(u=>u.t=='eng'&&u.f==0);
@@ -357,9 +360,10 @@ function placeDrag(a,b,keep){const k=placing.k,sp=LINE[k],us=sel.filter(u=>u.t==
  const ls=sp?linePts(a,b,sp):{p:[b],ang:0,n:0};if(k!='trench'&&!ls.n)return place(b.x,b.y,keep);
  const d=DEF[k]||{},jobs=[];let bad=0,poor=0;
  if(k=='road'){if(!roadCheck(a.x,a.y)||!roadCheck(b.x,b.y)){say('Makeshift roads need dry ground');return}if(F[0].oil<15){say('Not enough oil');return}F[0].oil-=15;const r=mkRoad(a,b,1),u=us[0];cmd(u);u.act='road';u.at={x:(a.x+b.x)/2,y:(a.y+b.y)/2,road:r,site:1};u.at=r;u.w=0;say('Building makeshift road');if(!keep)placing=null;return}
- for(const q of ls.p){if(k=='trench'){if(isW(q.x,q.y)||(MAP!='snow'&&Math.abs(q.y-RY)<80)){bad++;continue}jobs.push({x:q.x,y:q.y,t:'pt',pt:1,ang:ls.ang});continue}
+ const trenchAng=draggableTrenchAngle(a,b,ls,placing);
+ for(const q of ls.p){if(k=='trench'){if(isW(q.x,q.y)||(MAP!='snow'&&Math.abs(q.y-RY)<80)){bad++;continue}jobs.push({x:q.x,y:q.y,t:'pt',pt:1,ang:trenchAng});continue}
   const c=placeCheck(k,q.x,q.y);if(!c.ok){bad++;continue}if(F[0].oil<d.cost){poor=1;break}F[0].oil-=d.cost;jobs.push(mkDef(k,0,c.x,c.y,k=='trap'?0:ls.ang,1))}
- jobs.forEach((j,i)=>{const u=us[i%us.length],busy=u.act&&((u.act=='build'&&u.at&&u.at.site&&!u.at.dead)||(u.act=='dig'&&u.at&&u.at.pt));
+ jobs.forEach((j,i)=>{const u=us[i%us.length],busy=buildBusy(u)||(u.act=='dig'&&u.at&&u.at.pt);
   if(busy)(u.bq=u.bq||[]).push(j);else{cmd(u);u.act=j.pt?'dig':'build';u.at=j;u.w=0}});
  say(!jobs.length?(poor?'Not enough oil':'Cannot build there'):(k=='trench'?'Digging ':'Building ')+jobs.length+(bad?' ('+bad+' blocked)':'')+(poor?' - ran out of oil':''));
  if(!keep)placing=null}
@@ -390,6 +394,8 @@ function deploy(m){if(!m||m.t!='mcv'||m.dead||m.drop>0)return;const x=m.x,y=m.y,
  E.push(h);ALLT.push(h);moveHQ(h,x,y);fx(x,y,70);F[0].gh.delete(h.id);sel=[h];say('HQ deployed - Q/F/E/R/T to build')}
 function segD(px,py,a,b){const dx=b.x-a.x,dy=b.y-a.y,t=cl(((px-a.x)*dx+(py-a.y)*dy)/(dx*dx+dy*dy),0,1);return{d:hyp(px-a.x-t*dx,py-a.y-t*dy),x:a.x+t*dx,y:a.y+t*dy}}
 function roadAt(x,y){let b=null,bd=40;for(const n of N)for(const e of n.a)if(!e.br&&n.i<e.n.i){const s=segD(x,y,n,e.n);if(s.d<bd){bd=s.d;b={n,e,x:s.x,y:s.y}}}return b}
+function roadSurfaceAt(x,y){const q=roadAt(x,y);if(q)return{...q,rot:Math.atan2(q.e.n.y-q.n.y,q.e.n.x-q.n.x)};
+ const b=bridges.find(b=>b.hp>0&&Math.abs(x-b.x)<40&&Math.abs(y-RY)<60);return b?{x:b.x,y:RY,rot:Math.PI/2,bridge:b}:null}
 let aiT=0,visT=0;
 function update(dt){T+=dt;updWx(dt);updHeli(dt);
  for(const e of E.slice()){if(e.dead)continue;if(e.cd>0)e.cd-=dt;if(e.u)unitAI(e,dt);else if(e.t=='hq'||e.t=='town')turret(e,dt);else if(e.def&&!e.site)defAI(e,dt)}

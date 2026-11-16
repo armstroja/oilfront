@@ -71,7 +71,7 @@ hp.textContent=`OIL FRONT - CONTROLS
 Left drag: select      Right click: move / attack / capture
 Ctrl + right click: attack-move (units) or rally point (HQ)
 Q F E R T G: build units (HQ selected)      . : select idle units
-B build menu   C cut road   V trench   H deploy HQ   Space: jump to HQ
+B build menu   C cut road   V trench (Z rotates single trenches)   H deploy HQ   Space: jump to HQ
 Ctrl+1-5: save group, 1-5: recall group
 P pause    [ ] game speed    M mute    ? or F1: this help
 
