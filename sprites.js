@@ -159,15 +159,15 @@ const road2=(c,x,y,w,h,hz)=>{rect(c,x-2,y-2,w+4,h+4,'rgba(60,52,38,.35)');asphal
 const put=(c,id,fx,fy,team=0)=>Assets.draw(c,id,team,fx-4,fy);
 /* Town2.small: cross streets, lots filled with random modules and trees, one team depot. Town2.capital: ring boulevard, palace, avenues, dense blocks and landmarks. Region sizes are in 2x pixels. */
 const Town2={
- small(c,x0,y0,w,h,seed,team=0,dens=.78){const mx=x0+(w>>1)-6,my=y0+(h>>1)-6;road2(c,x0,my,w,12,true);road2(c,mx,y0,12,h,false);
+ small(c,x0,y0,w,h,seed,team=0,dens=.78,ruin=0.18){const mx=x0+(w>>1)-6,my=y0+(h>>1)-6;road2(c,x0,my,w,12,true);road2(c,mx,y0,12,h,false);
   for(const [rx,ry,rw,rh] of [[x0,y0,mx-x0,my-y0],[mx+12,y0,x0+w-mx-12,my-y0],[x0,my+12,mx-x0,y0+h-my-12],[mx+12,my+12,x0+w-mx-12,y0+h-my-12]])
-   for(let x=rx+2;x+28<=rx+rw;x+=30)for(let y=ry+2;y+26<=ry+rh;y+=30){const r=hrnd(x,y,seed);if(r<.1)tree(c,x+14,y+13,4);else if(r<dens){const k=(r*977|0)%7,m=NS['bld'+k];put(c,'bld'+k,x+((28-m.bw)>>1),y+((26-m.bh)>>1))}}
+   for(let x=rx+2;x+28<=rx+rw;x+=30)for(let y=ry+2;y+26<=ry+rh;y+=30){const r=hrnd(x,y,seed);if(r<.1)tree(c,x+14,y+13,4);else if(r<dens){const k=(r*977|0)%7,m=NS['bld'+k];{const rz=hrnd(x,y,seed+50)<ruin;if(rz){Assets.draw(c,'rubbleDecal',0,x+14-16,y+13-16);}put(c,'bld'+k+(rz?'Ruin':''),x+((28-m.bw)>>1),y+((26-m.bh)>>1))}}}
   put(c,'bldDepot',mx+16,my-26,team)},
- capital(c,x0,y0,w,h,seed,team=0){const cx=x0+w/2,cy=y0+h/2,R=Math.min(w,h)/2-12;road2(c,x0,cy-6,w,12,true);road2(c,cx-6,y0,12,h,false);
+ capital(c,x0,y0,w,h,seed,team=0,ruin=0.3){const cx=x0+w/2,cy=y0+h/2,R=Math.min(w,h)/2-12;road2(c,x0,cy-6,w,12,true);road2(c,cx-6,y0,12,h,false);
   for(let y=y0;y<y0+h;y++)for(let x=x0;x<x0+w;x++){const d=Math.hypot(x+.5-cx,y+.5-cy),a=Math.abs(d-R),r=hrnd(x,y,8);
    if(d<R-7)dot(c,x,y,shade('#6f7a45',.85+r*.25+(((y>>3)&1)?.04:0)));else if(a<5){let col=shade('#6c7376',.84+(r*.5+vn(x,y,6,2)*.5)*.34);if(a>3.8)col=shade(col,.78);else if(a<.5&&(Math.floor(Math.atan2(y-cy,x-cx)*R/6)&1))col='rgba(201,164,58,.85)';dot(c,x,y,col)}else if(a<7)dot(c,x,y,'rgba(60,52,38,.35)')}
   for(let a=0;a<6.28;a+=.11)tree(c,Math.round(cx+Math.cos(a)*(R-14)),Math.round(cy+Math.sin(a)*(R-14)),3);
-  for(let x=x0+2;x+24<=x0+w;x+=26)for(let y=y0+2;y+24<=y0+h;y+=26){const mx=x+12,my=y+12;if(Math.hypot(mx-cx,my-cy)<R+16||Math.abs(mx-cx)<14||Math.abs(my-cy)<14)continue;const r=hrnd(x,y,seed);if(r>.96)continue;const id=r<.08?'capDome':r<.16?'capStep':r<.22?'capRound':'cap'+((r*977|0)%4),m=NS[id];put(c,id,x+((24-m.bw)>>1),y+((24-m.bh)>>1))}
+  for(let x=x0+2;x+24<=x0+w;x+=26)for(let y=y0+2;y+24<=y0+h;y+=26){const mx=x+12,my=y+12;if(Math.hypot(mx-cx,my-cy)<R+16||Math.abs(mx-cx)<14||Math.abs(my-cy)<14)continue;const r=hrnd(x,y,seed);if(r>.96)continue;const id=r<.08?'capDome':r<.16?'capStep':r<.22?'capRound':'cap'+((r*977|0)%4),m=NS[id];{const rz=hrnd(x,y,seed+50)<ruin;if(rz){Assets.draw(c,'rubbleDecal',0,x+12-16,y+12-16);}put(c,id+(rz?'Ruin':''),x+((24-m.bw)>>1),y+((24-m.bh)>>1))}}
   put(c,'palace',Math.round(cx-44),Math.round(cy-32),team)}};
 
 /* ===== Trees, forest texture and missile silo ===== */
@@ -218,6 +218,46 @@ NS.dirtRoadT={w:32,h:32,raw:1,draw(c){dirt(c,[trkH,trkS],4)}};
 
 NS.mcv={w:32,h:32,team:1,shadow:3,draw(c,t){[3,13,23].forEach(y=>{tire(c,6,y,4,6);tire(c,22,y,4,6)});camo(c,9,1,14,9,8);lit(c,9,1,14,9);glass(c,10,3,12,3);rect(c,15,6,2,1,t);rect(c,13,8,6,1,'#2a2c2d');rect(c,8,11,16,19,'#3b3f40');conc(c,9,12,14,17,3,'#b0a894');lit(c,9,12,14,17);rect(c,9,18,14,4,t);rect(c,9,18,14,1,shade(t,1.3));rect(c,12,24,8,2,'#8a8372');line(c,21,14,21,8,'#2a2c2d');rect(c,20,6,3,2,'#c9a43a')}};
 NS.bridgeLayer={w:32,h:32,team:1,shadow:3,draw(c,t){[4,18,24].forEach(y=>{tire(c,7,y,3,5);tire(c,22,y,3,5)});rect(c,11,10,10,4,'#2a2c2d');camo(c,9,1,14,10,9);lit(c,9,1,14,10);glass(c,10,3,12,3);rect(c,15,6,2,1,t);rect(c,9,12,14,18,'#3b3f40');for(let y=13;y<30;y+=3){rect(c,9,y,14,2,'#9a9c96');rect(c,9,y+2,14,1,'#6f726e')}rect(c,15,12,2,18,'#4a4e50');rect(c,9,12,14,1,'#c0c4c8')}};
+/* ===== Destruction kit ===== */
+const ruinize=(c,seed,sev)=>{
+ const W=c.canvas.width,H=c.canvas.height,im=c.getImageData(0,0,W,H),d=im.data,B=[];
+ for(let i=0;i<2+Math.round(sev*3);i++)B.push([W*(.15+.7*hrnd(i,seed,1)),H*(.15+.7*hrnd(i,seed,2)),Math.min(W,H)*(.25+.2*hrnd(i,seed,3))]);
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=(y*W+x)*4;if(d[i+3]<20)continue;
+  let bl=0;for(const [bx,by,br] of B)bl=Math.max(bl,1-Math.hypot(x-bx,y-by)/br);
+  const n=vn(x,y,6,seed)*.6+vn(x,y,2.5,seed+3)*.4,v=bl*.8+n*.55+(sev-.5)*.3,r=hrnd(x,y,seed+7);
+  if(v>1.05){d[i+3]=0}
+  else if(v>.88){const p=r<.3?[44,36,30]:[24,20,16];d[i]=p[0];d[i+1]=p[1];d[i+2]=p[2]}
+  else if(v>.62){const k=r<.2?.35:.5;d[i]=d[i]*k+30;d[i+1]=d[i+1]*k+24;d[i+2]=d[i+2]*k+18}
+  else{const k=.8+r*.1;d[i]*=k;d[i+1]*=k;d[i+2]*=k}}
+ c.putImageData(im,0,0);
+ const alive=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&d[(y*W+x)*4+3]>0;
+ const N=Math.round(W*H/38*(.6+sev));
+ for(let k=0;k<N;k++){const x=hrnd(k,seed,11)*W|0,y=hrnd(k,seed,12)*H|0,r=hrnd(k,seed,13);if(!alive(x,y))continue;
+  if(r<.45){const w=2+(hrnd(k,seed,14)*3|0),h=1+(hrnd(k,seed,15)*2|0);rect(c,x,y,w,h,r<.2?PAL.concLo:PAL.conc);rect(c,x,y,w,1,shade(PAL.conc,1.15))}
+  else if(r<.62){const a=hrnd(k,seed,16)*6.28,l=4+(hrnd(k,seed,17)*6|0);line(c,x,y,Math.round(x+Math.cos(a)*l),Math.round(y+Math.sin(a)*l),'#2a1f17')}
+  else if(r<.72){const a=hrnd(k,seed,18)*6.28;line(c,x,y,Math.round(x+Math.cos(a)*6),Math.round(y+Math.sin(a)*6),'#7a4a2a');dot(c,x,y,'#9a5a30')}
+  else if(r<.80)dot(c,x,y,hrnd(k,seed,19)<.5?PAL.fire:PAL.flash)
+  else{rect(c,x,y,2,1,'rgba(20,18,16,.5)')}}};
+const ruinOf=(id,seed,sev=.55)=>{const b=NS[id];NS[id+'Ruin']={...b,draw(c,t,td){b.draw(c,t,td);ruinize(c,seed,sev)}}};
+['bld0','bld1','bld2','bld3','bld4','bld5','bld6','bldDepot','cap0','cap1','cap2','cap3','capStep','capDome','capRound'].forEach((id,i)=>ruinOf(id,100+i*13,.55));
+ruinOf('palace',777,.7);
+ruinOf('bunker',888,.6);ruinOf('oilRig',999,.6);ruinOf('missileSilo',1111,.5);
+/* ===== Destruction decals ===== */
+NS.rubbleDecal={w:32,h:32,raw:1,shadow:1,draw(c){
+ for(let k=0;k<46;k++){const a=hrnd(k,1,21)*6.28,d=Math.sqrt(hrnd(k,2,21))*14,x=Math.round(16+Math.cos(a)*d),y=Math.round(16+Math.sin(a)*d),r=hrnd(k,3,21);
+  if(r<.5)rect(c,x,y,2+(r*4|0),2,r<.25?PAL.concLo:PAL.conc);else if(r<.8)dot(c,x,y,'#2a1f17');else dot(c,x,y,PAL.concDk)}
+ for(let k=0;k<3;k++){const a=hrnd(k,4,21)*6.28;line(c,16,16,Math.round(16+Math.cos(a)*9),Math.round(16+Math.sin(a)*9),'#7a4a2a')}}};
+NS.craterBig={w:32,h:32,raw:1,draw(c){for(let y=0;y<32;y++)for(let x=0;x<32;x++){const d=Math.hypot(x+.5-16,y+.5-16)+(hrnd(x,y,5)-.5)*4;
+ if(d<7)dot(c,x,y,'#1f1a15');else if(d<9)dot(c,x,y,(x+y)&1?'#3a2f25':'#2a221b');else if(d<12&&hrnd(x,y,6)<.5)dot(c,x,y,'#8a7350')}}};
+NS.brokenWall={w:32,h:32,raw:1,shadow:1,draw(c){for(let i=0;i<32;i++){const h=hrnd(i>>2,1,22)<.5?3:hrnd(i>>2,2,22)<.5?2:1;if(hrnd(i>>2,3,22)<.2)continue;
+ rect(c,i,14-h,1,h+2,i%5==0?PAL.concLo:PAL.conc);dot(c,i,14-h,shade(PAL.conc,1.2))}
+ for(let k=0;k<14;k++)dot(c,(hrnd(k,1,23)*32)|0,16+(hrnd(k,2,23)*4|0),PAL.concDk)}};
+/* ===== Burnt-out vehicles ===== */
+const charOf=(id,seed)=>{const b=NS[id];NS[id+'Wreck']={...b,team:0,draw(c,t,td){b.draw(c,t,td);
+ const W=32,im=c.getImageData(0,0,W,W),d=im.data;
+ for(let i=0;i<d.length;i+=4){if(!d[i+3])continue;const r=hrnd(i>>2,seed,1),k=.28+r*.2;d[i]=d[i]*k+18;d[i+1]=d[i+1]*k+14;d[i+2]=d[i+2]*k+10;if(r>.97){d[i]=230;d[i+1]=126;d[i+2]=34}}
+ c.putImageData(im,0,0);for(let k=0;k<5;k++)dot(c,8+(hrnd(k,seed,2)*16|0),8+(hrnd(k,seed,3)*16|0),PAL.fire)}}};
+['fuelTruck','scoutCar','engineerTruck','tankHull','tankTurret','rocketArtillery','mcv','bridgeLayer'].forEach((id,i)=>charOf(id,i+40));
 for(const k in NS){NS[k].hr=1;NS[k].k=.5;S[k]=NS[k]}
 const Town={trees(c,x,y,r=1){const n=hrnd(x,y,1)<.5?'treeBroad':'treeOlive',sc=.1+.15*r,cv=Assets.get(n,0);c.imageSmoothingEnabled=true;c.drawImage(cv,x-16*sc,y-16*sc,32*sc,32*sc);c.imageSmoothingEnabled=false}};
 const Assets={cache:{},
@@ -232,3 +272,9 @@ const Assets={cache:{},
 TEAMS.push(['Neutral','#8c8c7c']);
 Terrain.fast=function(c,w,h){const gr=PAL.ground;for(let Y=0;Y<h;Y+=4)for(let X=0;X<w;X+=4){let v=.62*vn(X,Y,72,1)+.3*vn(X,Y,20,2)+.08*hrnd(X>>2,Y>>2,3);v=(v-.2)*1.55;const b=Math.max(0,Math.min(4,Math.floor(v*5)));c.fillStyle=gr[b];c.fillRect(X,Y,4,4);if(b>=2)for(let j=0;j<4;j++)for(let i=0;i<4;i++)if(hrnd(X+i,Y+j,9)<.04)dot(c,X+i,Y+j,gr[b-1])}};
 Terrain.jungle=function(c,w,h){const P=['#2b3a1c','#344526','#3e5129','#4a5c30','#566a38'];for(let Y=0;Y<h;Y+=4)for(let X=0;X<w;X+=4){const v=vn(X,Y,80,4)*.7+vn(X,Y,18,5)*.3,m=vn(X,Y,120,9);let col=P[Math.min(4,Math.floor(v*5))];if(m>.72&&v<.55)col='#4b3e28';c.fillStyle=col;c.fillRect(X,Y,4,4);if(hrnd(X,Y,8)<.25){dot(c,X+1,Y+1,shade(col,.8));dot(c,X+3,Y+2,shade(col,1.2))}}};
+
+/* ===== Destruction state API ===== */
+/* state: 'ruin' (buildings) or 'wreck' (vehicles). Falls back to the intact sprite if no variant exists. */
+Assets.stateOf=(name,state)=>{const n=name+(state==='ruin'?'Ruin':state==='wreck'?'Wreck':'');return S[n]?n:name};
+Assets.hasState=(name,state)=>Assets.stateOf(name,state)!==name;
+Assets.drawState=(ctx,name,team,x,y,ang=0,state)=>Assets.draw(ctx,Assets.stateOf(name,state),team,x,y,ang);
