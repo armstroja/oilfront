@@ -67,9 +67,10 @@ const HUBN=nd(1200,1200);HUBN.isl=1;const IN=nd(1200,1060),IS=nd(1200,1340);IN.R
 var SG=null;
 function buildRoads(){SG=null;const keep=N.filter(n=>!n.el&&!n.dormant);N.length=0;keep.forEach((n,i)=>{n.i=i;n.a=[];n.s=new Set();N.push(n)});
  bridges.forEach(b=>lk(b.nN,b.nS,b));lk(IN,HUBN);lk(HUBN,IS);for(const r of rigs)if(r.nd.isl)lk(HUBN,r.nd);
+ const CH=[],o=(p,q,r)=>(q.x-p.x)*(r.y-p.y)-(q.y-p.y)*(r.x-p.x),X2=(a,b,c,d)=>o(a,b,c)*o(a,b,d)<0&&o(c,d,a)*o(c,d,b)<0;
  for(const s of[0,1]){const L=N.filter(n=>!n.isl&&!n.el&&(n.y<RY?0:1)==s),T2=[L[0]],rest=L.slice(1);
-  while(rest.length){let bi=0,bj=0,bd=1e9;rest.forEach((r,i)=>T2.forEach((t,j)=>{const d=hyp(r.x-t.x,r.y-t.y);if(d<bd){bd=d;bi=i;bj=j}}));lk(T2[bj],rest[bi]);T2.push(rest.splice(bi,1)[0])}
-  for(const n of L){let b=null,bd=450;for(const m of L)if(m!=n&&!n.s.has(m)){const d=hyp(n.x-m.x,n.y-m.y);if(d<bd){bd=d;b=m}}if(b)lk(n,b)}}}
+  while(rest.length){let bi=0,bj=0,bd=1e9;rest.forEach((r,i)=>T2.forEach((t,j)=>{const d=hyp(r.x-t.x,r.y-t.y);if(d<bd){bd=d;bi=i;bj=j}}));lk(T2[bj],rest[bi]);CH.push([T2[bj],rest[bi]]);T2.push(rest.splice(bi,1)[0])}
+  for(const n of L){const c=L.filter(m=>m!=n&&!n.s.has(m)&&hyp(n.x-m.x,n.y-m.y)<450).sort((p,q)=>hyp(p.x-n.x,p.y-n.y)-hyp(q.x-n.x,q.y-n.y)).find(m=>!CH.some(h=>h[0]!=n&&h[0]!=m&&h[1]!=n&&h[1]!=m&&X2(n,m,h[0],h[1])));if(c){lk(n,c);CH.push([n,c])}}}}
 buildRoads();
 function placeCap(){buildRoads()}
 function route(a,b){const D=new Map([[a,0]]),pv=new Map(),Q=[a],dn=new Set();while(Q.length){Q.sort((p,q)=>D.get(p)-D.get(q));const u=Q.shift();if(dn.has(u))continue;dn.add(u);if(u==b)break;for(const e of u.a){if((e.br&&e.br.hp<=0)||e.cut)continue;const d=D.get(u)+e.w;if(!D.has(e.n)||d<D.get(e.n)){D.set(e.n,d);pv.set(e.n,u);Q.push(e.n)}}}
@@ -349,9 +350,10 @@ function placeDrag(a,b,keep){const k=placing.k,sp=LINE[k],us=sel.filter(u=>u.t==
   if(busy)(u.bq=u.bq||[]).push(j);else{cmd(u);u.act=j.pt?'dig':'build';u.at=j;u.w=0}});
  say(!jobs.length?(poor?'Not enough oil':'Cannot build there'):(k=='trench'?'Digging ':'Building ')+jobs.length+(bad?' ('+bad+' blocked)':'')+(poor?' - ran out of oil':''));
  if(!keep)placing=null}
-function moveHQ(h,x,y){const cuts=[];for(const n of N)for(const e of n.a)if(e.cut&&!e.br&&n.i<e.n.i)cuts.push([e.cx,e.cy]);
- h.x=h.nd.x=x;h.y=h.nd.y=y;const gt=h.gate;gt.x=x+(x<W/2?80:-80);gt.y=y;gt.dormant=0;if(!N.includes(gt))N.push(gt);buildRoads();
- for(const c of cuts){const r=roadAt(c[0],c[1]);if(r){const re=r.e.n.a.find(q=>q.n==r.n);r.e.cut=re.cut=1;r.e.cx=re.cx=c[0];r.e.cy=re.cy=c[1]}}
+function moveHQ(h,x,y){
+ h.x=h.nd.x=x;h.y=h.nd.y=y;const gt=h.gate;gt.x=x+(x<W/2?80:-80);gt.y=y;gt.dormant=0;gt.a=[];gt.s=new Set();gt.i=N.length;N.push(gt);SG=null;
+ const near=N.filter(n=>n!==gt&&!n.el&&!n.isl&&!n.dormant&&(n.y<RY)==(gt.y<RY)).sort((p,q)=>hyp(p.x-gt.x,p.y-gt.y)-hyp(q.x-gt.x,q.y-gt.y));
+ if(near[0])lk(gt,near[0]);if(near[1]&&hyp(near[1].x-gt.x,near[1].y-gt.y)<450)lk(gt,near[1]);
  const g=TC.getContext('2d');g.drawImage(BASE,0,0);drawRoads(g);drawKits(g);for(const s of SC)g.drawImage(Assets.get(s[2]||'scorch',0),Math.round(s[0]-16),Math.round(s[1]-16))}
 function airlift(f,x,y,list,msg){const sx=x<W/2?-140:W+140,sy=y+(y<RY?-160:160);HE.push({f,x:sx,y:sy,sx,sy,tx:x,ty:y,ang:Math.atan2(y-sy,x-sx),list,n:0,st:0,dt:0,k:0,sel:f==0,msg})}
 function updHeli(dt){for(let i=HE.length;i--;){const h=HE[i];h.k+=dt;
