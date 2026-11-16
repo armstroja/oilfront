@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Asset preview</title>
+<style>
+:root{--bg:#1d2024;--pn:#272b30;--ln:#3a4047;--tx:#e6e2d6;--mu:#9a9c94;--ac:#e5b822;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.4 system-ui,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--pn);border-bottom:1px solid var(--ln);padding:10px 16px;display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center}
+header h1{font-size:16px;margin:0 6px 0 0}
+label{display:flex;gap:6px;align-items:center;color:var(--mu)}
+select,input,button{background:var(--bg);color:var(--tx);border:1px solid var(--ln);border-radius:4px;padding:4px 8px;font:inherit}
+button{cursor:pointer}button:hover,select:hover{border-color:var(--ac)}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+#swatch{width:14px;height:14px;border-radius:3px;border:1px solid #0006}
+main{padding:8px 16px 48px}
+h2{font-size:15px;margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--ln)}
+h2 small{color:var(--mu);font-weight:400;margin-left:8px}
+.grid{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}
+.card{background:var(--pn);border:1px solid var(--ln);border-radius:6px;padding:8px;display:flex;flex-direction:column;gap:6px;align-items:center;cursor:pointer;min-width:84px;max-width:100%}
+.card:hover{border-color:var(--ac)}
+.card canvas{image-rendering:pixelated;display:block;max-width:100%}
+.card .n{font-size:12px}.card .d{font-size:11px;color:var(--mu)}
+.card.miss canvas{opacity:.35}
+.bgG canvas.s{background-color:#85744a}
+.bgD canvas.s{background:#2a2e33}
+.bgC canvas.s{background:repeating-conic-gradient(#4a4f55 0 25%,#383c42 0 50%) 0 0/16px 16px}
+.bgL canvas.s{background:#cfcab8}
+.scene{image-rendering:pixelated;border:1px solid var(--ln);border-radius:4px;max-width:100%;height:auto}
+.row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.cap{color:var(--mu);font-size:12px;margin-top:4px}
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ac);color:#111;padding:6px 12px;border-radius:4px;opacity:0;transition:opacity .2s;pointer-events:none}
+#toast.on{opacity:1}
+#err{display:none;margin:16px;padding:12px;border:1px solid #c0392b;border-radius:6px;background:#3a2220}
+</style></head>
+<body>
+<header>
+ <h1>Asset preview</h1>
+ <label>Team <span id="swatch"></span><select id="team"></select></label>
+ <label>State <select id="state"><option value="intact">Intact</option><option value="destroyed">Ruin / wreck</option></select></label>
+ <label>Zoom <select id="scale"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></label>
+ <label>Backdrop <select id="bg"><option value="bgG">Ground</option><option value="bgD">Dark</option><option value="bgC">Checker</option><option value="bgL">Light</option></select></label>
+ <label><input type="checkbox" id="game"> Game size (hi-res at ½)</label>
+ <label>Filter <input id="q" type="search" placeholder="name…"></label>
+ <span id="count" class="cap"></span>
+</header>
+<div id="err"></div>
+<main id="m"></main>
+<div id="toast"></div>
+
+<!-- Save your asset library as assets.js next to this file. -->
+<script src="assets.js"></script>
+<script>
+const $=id=>document.getElementById(id),st={seed:1,angle:0};
+const ORDER=['Buildings','Units','Defenses & props','Vegetation','Terrain tiles','Effects','Decals'];
+
+function cat(n){
+  if(/(Ruin|Wreck)$/.test(n))return null;
+  if(/^(explosion|smokePuff|rocket$)/.test(n))return 'Effects';
+  if(/^(rubbleDecal|craterBig|brokenWall|scorch|bunkerRubble|wreck)/.test(n))return 'Decals';
+  if(S[n].raw)return 'Terrain tiles';
+  if(/^(tree|scrub|rock|lawn)/.test(n))return 'Vegetation';
+  if(/^(bld|cap|palace|hq$|bunker$|oilRig|missileSilo)/.test(n))return 'Buildings';
+  if(/(heli|Truck|Car$|Hull|Turret|infantry|Artillery|mcv|bridgeLayer|Gun$|atGun)/.test(n))return 'Units';
+  return 'Defenses & props';
+}
+function resolve(n){
+  if($('state').value!=='destroyed')return n;
+  let r=Assets.stateOf(n,'ruin');
+  if(r===n)r=Assets.stateOf(n,'wreck');
+  return r;
+}
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),1200)}
+function copy(t){try{navigator.clipboard.writeText(t)}catch(e){}toast('Copied '+t)}
+
+function card(n,team,scale,half){
+  const s=S[n],real=resolve(n),cv=Assets.get(real,team),k=scale*(half&&s.hr?.5:1);
+  const c=document.createElement('canvas');c.className='s';c.width=cv.width;c.height=cv.height;
+  const g=c.getContext('2d');g.drawImage(cv,0,0);
+  c.style.width=cv.width*k+'px';c.style.height=cv.height*k+'px';
+  const d=document.createElement('div');d.className='card';d.title='Click to copy name';
+  if($('state').value==='destroyed'&&real===n)d.classList.add('miss'),d.title='No ruin/wreck variant';
+  d.append(c);
+  d.insertAdjacentHTML('beforeend','<div class="n">'+real+'</div><div class="d">'+cv.width+'×'+cv.height+(s.team?' · team':'')+'</div>');
+  d.onclick=()=>copy(real);
+  return d;
+}
+
+function scene(w,h,fn,label){
+  const c=document.createElement('canvas');c.width=w;c.height=h;c.className='scene';c.style.width=w*2+'px';
+  const g=c.getContext('2d');g.imageSmoothingEnabled=false;
+  try{fn(g)}catch(e){g.fillStyle='#c0392b';g.fillRect(0,0,w,h);console.error(label,e)}
+  const f=document.createElement('figure');f.style.margin=0;f.append(c);
+  f.insertAdjacentHTML('beforeend','<div class="cap">'+label+'</div>');return f;
+}
+
+function render(){
+  const team=+$('team').value,scale=+$('scale').value,half=$('game').checked,q=$('q').value.trim().toLowerCase();
+  $('swatch').style.background=TEAMS[team][1];
+  const m=$('m');m.className=$('bg').value;m.innerHTML='';
+  const groups={};let total=0;
+  for(const n of Object.keys(S)){const c=cat(n);if(!c||(q&&!n.toLowerCase().includes(q)))continue;(groups[c]=groups[c]||[]).push(n);total++}
+  $('count').textContent=total+' sprites';
+  for(const c of ORDER){
+    const list=groups[c];if(!list)continue;
+    const h=document.createElement('h2');h.innerHTML=c+'<small>'+list.length+'</small>';m.append(h);
+    const gr=document.createElement('div');gr.className='grid';
+    for(const n of list)gr.append(card(n,team,scale,half));
+    if(c==='Effects'&&!q)gr.prepend(boomCard(scale));
+    m.append(gr);
+  }
+  if(!q){
+    const h=document.createElement('h2');h.innerHTML='Composites &amp; scenes';m.append(h);
+    const r=document.createElement('div');r.className='row';
+    r.append(tankCard(team),
+      scene(256,160,g=>Terrain.fast(g,256,160),'Terrain.fast'),
+      scene(256,160,g=>Terrain.jungle(g,256,160),'Terrain.jungle'),
+      scene(320,240,g=>{Terrain.fast(g,320,240);Town2.small(g,0,0,320,240,st.seed,team)},'Town2.small (seed '+st.seed+')'),
+      scene(480,400,g=>{Terrain.fast(g,480,400);Town2.capital(g,0,0,480,400,st.seed,team)},'Town2.capital (seed '+st.seed+')'),
+      scene(320,160,g=>{Terrain.fast(g,320,160);forestPatch(g,20,10,280,140,st.seed)},'forestPatch'));
+    const b=document.createElement('button');b.textContent='Reseed scenes';b.onclick=()=>{st.seed++;render()};r.append(b);
+    m.append(r);
+  }
+}
+
+/* Animated explosion cycling through explosion0–6 */
+function boomCard(scale){
+  const d=document.createElement('div');d.className='card';
+  const c=document.createElement('canvas');c.className='s';c.width=c.height=32;c.style.width=c.style.height=32*scale+'px';
+  const g=c.getContext('2d');let f=0;
+  clearInterval(boomCard.t);
+  boomCard.t=setInterval(()=>{g.clearRect(0,0,32,32);g.drawImage(Assets.get('explosion'+f,0),0,0);f=(f+1)%8;if(f==7)f=0},110);
+  d.append(c);d.insertAdjacentHTML('beforeend','<div class="n">explosion (animated)</div><div class="d">frames 0–6</div>');return d;
+}
+
+/* Hull + rotating turret */
+function tankCard(team){
+  const d=document.createElement('div');d.className='card';d.style.cursor='default';
+  const c=document.createElement('canvas');c.className='s';c.width=c.height=32;c.style.width=c.style.height='128px';
+  const g=c.getContext('2d');
+  const draw=()=>{g.clearRect(0,0,32,32);const w=$('state').value==='destroyed';
+    Assets.draw(g,w?'tankHullWreck':'tankHull',team,0,0);
+    Assets.draw(g,w?'tankTurretWreck':'tankTurret',team,0,0,st.angle*Math.PI/180)};
+  const r=document.createElement('input');r.type='range';r.min=0;r.max=360;r.value=st.angle;r.setAttribute('aria-label','Turret angle');
+  r.oninput=()=>{st.angle=+r.value;draw()};
+  d.append(c,r);d.insertAdjacentHTML('beforeend','<div class="n">tankHull + tankTurret</div><div class="d">turret pivots on (16,16)</div>');
+  draw();return d;
+}
+
+function init(){
+  if(typeof S==='undefined'||typeof Assets==='undefined'){
+    const e=$('err');e.style.display='block';
+    e.innerHTML='Could not find the asset library. Save your code as <b>assets.js</b> in the same folder as this file and reload.';return;
+  }
+  $('team').innerHTML=TEAMS.map((t,i)=>'<option value="'+i+'">'+t[0]+'</option>').join('');
+  for(const id of ['team','state','scale','bg','game'])$(id).onchange=render;
+  $('q').oninput=render;
+  render();
+}
+window.addEventListener('load',init);
+</script>
+</body></html>
