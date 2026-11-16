@@ -1,6 +1,82 @@
 /* extras.js - load AFTER engine.js. Hooks into engine functions instead of editing them. */
 const XT={pause:0,speed:1,al:-99,pings:[],arm:0,pump:0,mute:0,ac:null,amb:null};
 
+/* ---------- reconnaissance drone ---------- */
+ST.drone={n:'Strike Drone',hp:45,spd:210,rng:0,dmg:0,vis:520};
+DEF.drone={n:'Drone Facility',cost:320,hp:360,ter:'land',r:18,drone:1,vis:300};
+const DRONE_COST=90,DRONE_FLIGHT=24,DRONE_BLAST=115;
+
+function drawDrone(g,x,y,ang,team){
+ const c=FC[team]||'#e8b04a';
+ g.save();g.translate(x,y);g.rotate(ang+Math.PI/2);g.globalAlpha=.35;g.fillStyle='#000';g.beginPath();g.ellipse(0,8,18,5,0,0,6.28);g.fill();g.globalAlpha=1;
+ g.fillStyle='#252b2f';g.fillRect(-5,-8,10,16);g.fillStyle=c;g.fillRect(-3,-7,6,5);g.fillStyle='#9ca7a1';g.fillRect(-2,-2,4,8);
+ g.strokeStyle='#59635d';g.lineWidth=2;for(const s of [-1,1]){g.beginPath();g.moveTo(0,0);g.lineTo(s*15,-8);g.moveTo(0,0);g.lineTo(s*15,8);g.stroke()}
+ g.fillStyle='#e8b04a';g.fillRect(-1,8,2,4);g.restore();
+}
+
+function droneAI(d,dt){
+ if(d.drop>0){d.drop-=dt;return}
+ if(d.crash){d.crash-=dt;d.alt=Math.max(0,(d.crash/1.2)*90);if(d.crash<=0){
+   fx(d.x,d.y,DRONE_BLAST*.7);
+   for(const e of E.slice())if(e!=d&&e.f!=d.f&&e.hp>0&&hyp(e.x-d.x,e.y-d.y)<DRONE_BLAST)hurt(e,180*(1-hyp(e.x-d.x,e.y-d.y)/DRONE_BLAST));
+   kill(d);if(d.f==MYF)say('Strike drone slammed down');return;
+ }return}
+ d.flight=(d.flight||DRONE_FLIGHT)-dt;
+ if(d.flight<=0){d.crash=1.2;d.path=[];if(d.f==MYF)say('Strike drone impact run');return}
+ if(d.droneTarget){
+   const dx=d.droneTarget.x-d.x,dy=d.droneTarget.y-d.y,dist=hyp(dx,dy),step=ST.drone.spd*dt;
+   if(dist<=step){d.x=d.droneTarget.x;d.y=d.droneTarget.y;d.droneTarget=null}
+   else{d.x+=dx/dist*step;d.y+=dy/dist*step;d.ang=Math.atan2(dy,dx)}
+ }
+}
+
+const _unitAI=unitAI;
+unitAI=function(u,dt){if(u.t=='drone')return droneAI(u,dt);_unitAI(u,dt)};
+
+const _drawU=drawU;
+drawU=function(g,t,x,y,ang,c){if(t=='drone'){drawDrone(g,x,y,ang,FC.indexOf(c));return}_drawU(g,t,x,y,ang,c)};
+
+const _drawD=drawD;
+drawD=function(g,e,tm,a){if(e.k=='drone'){
+ g.save();g.globalAlpha=a*(e.site?.5:1);g.fillStyle='#313a35';g.fillRect(e.x-22,e.y-16,44,32);g.fillStyle='#77836e';g.fillRect(e.x-16,e.y-10,32,20);g.fillStyle='#e8b04a';g.fillRect(e.x-4,e.y-4,8,8);g.restore();return
+}_drawD(g,e,tm,a)};
+
+const _place=place;
+place=function(x,y,keep){
+ const k=placing&&placing.k;
+ if(k=='drone'){
+   if(!sel.some(u=>u.t=='eng'&&u.f==MYF)){say('Select an engineer to build');placing=null;return}
+ }
+ _place(x,y,keep);
+};
+
+{const b=document.createElement('button');b.id='d_drone';b.innerHTML='Drone Facility <b>'+DEF.drone.cost+'</b><br><small style="opacity:.7">open ground | launches strike drones</small>';
+ b.onclick=()=>{placing={k:'drone',rot:0};menu=0;tool=null;say('Click to place the Drone Facility - right-click cancels')};$('dm').appendChild(b)}
+
+function launchDrone(fac){
+ if(!fac||fac.dead||fac.site||fac.f!=MYF)return;
+ if(F[MYF].oil<DRONE_COST){say('Not enough oil for a strike drone');return}
+ if(E.some(e=>e.t=='drone'&&e.f==MYF)){say('Only one strike drone can be airborne');return}
+ F[MYF].oil-=DRONE_COST;const d=unit('drone',MYF,fac.x,fac.y-28);d.flight=DRONE_FLIGHT;d.alt=80;d.fac=fac;sel=[d];say('Strike drone launched - right-click to fly it');
+}
+
+const _order=order;
+order=function(x,y){
+ const ds=sel.filter(e=>e.t=='drone'&&e.f==MYF&&!e.crash);
+ if(ds.length){ds.forEach(d=>{d.droneTarget={x:cl(x,50,W-50),y:cl(y,50,W-50)}});fx(x,y,10);return}
+ _order(x,y);
+};
+
+const _hudDrone=hud;
+hud=function(){
+ _hudDrone();
+ const fac=sel.find(e=>e.k=='drone'&&e.f==MYF&&!e.site),old=$('x_drone');
+ if(!old){const b=document.createElement('button');b.id='x_drone';b.onclick=()=>launchDrone(sel.find(e=>e.k=='drone'&&e.f==MYF&&!e.site));$('btns').appendChild(b)}
+ const b=$('x_drone'),d=sel.find(e=>e.t=='drone'&&e.f==MYF),f=fac||sel.find(e=>e.k=='drone'&&e.f==MYF);
+ b.style.display=f&&!d?'':'none';b.textContent='Launch Drone '+DRONE_COST;b.disabled=!f||F[MYF].oil<DRONE_COST||!!E.find(e=>e.t=='drone'&&e.f==MYF);
+ if(d)$('info').innerHTML='Strike Drone<br>Flight '+Math.max(0,d.flight||0).toFixed(1)+'s<br>Right-click: fly to point'+(d.crash?'<br>Impact run':'');
+};
+
 /* ---------- rig names + labels ---------- */
 ['Bir Nafit','Bir Zayt','Ain Dhahab','Bir Sakhr','Umm Naft','Bir Hamra','Bir Salam','Ain Qatran','Bir Jabal','Bir Rimal','Jazirat Nafit I','Jazirat Nafit II'].forEach((n,i)=>{if(rigs[i])rigs[i].name=n});
 tag=function(g,e){const r=e.t=='rig',x=r?e.x-26:e.isHQ?e.x-34:e.kx+2,y=r?e.y+38:e.isHQ?e.y+40:e.ky+81;g.font='bold 11px "Courier New",monospace';g.textAlign='left';const w=g.measureText(e.name).width;g.fillStyle='rgba(10,14,9,.7)';g.fillRect(x-2,y-10,w+6,14);g.fillStyle=r?'#e8b04a':'#e8d9a8';g.fillText(e.name,x+1,y+1);g.font='10px sans-serif'};
@@ -83,6 +159,6 @@ addEventListener('keydown',e=>{const k=e.key;
 
 /* ---------- skirmish options on the map menu ---------- */
 {const p=document.querySelector('#mapMenu .panel'),h=document.createElement('div');h.style.cssText='margin:0 0 12px;font-size:12px;color:#b9c5ad;line-height:1.9';
- h.innerHTML='AI factions <select id="xAI"><option>4</option><option>3</option><option>2</option><option>1</option></select> &nbsp; Start oil <select id="xOil"><option>300</option><option>600</option><option>1000</option></select><br>Seed '+GAME_SEED+' (add ?seed=N to the URL to replay it)';
+ h.innerHTML='AI factions <select id="xAI"><option>4</option><option>3</option><option>2</option><option>1</option></select> &nbsp; Start oil <select id="xOil"><option>260</option><option>600</option><option>1000</option></select><br>Seed '+GAME_SEED+' (add ?seed=N to the URL to replay it)';
  p.insertBefore(h,p.querySelector('button'))}
 document.querySelectorAll('#mapMenu button').forEach(b=>b.addEventListener('click',()=>{const n=+$('xAI').value,o=+$('xOil').value;F.forEach(f=>f.oil=o);for(let i=n+1;i<5;i++)elim(i);say('Skirmish: '+n+' AI, '+o+' oil. Press ? for controls')}));

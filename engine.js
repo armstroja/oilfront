@@ -1,6 +1,6 @@
 
 const $=i=>document.getElementById(i),C=$('c'),X=C.getContext('2d'),MM=$('mm'),MX=MM.getContext('2d');
-const W=2400,CS=40,G=60,RY=1200,FC=['#2b7de9','#d9383a','#e5b822','#2ea85c','#8e44ad'],FN=['Blue','Red','Yellow','Green','Purple'];
+const W=2500,CS=40,G=64,RY=1200,FC=['#2b7de9','#d9383a','#e5b822','#2ea85c','#8e44ad'],FN=['Blue','Red','Yellow','Green','Purple'];
 const rnd=(a,b)=>a+Math.random()*(b-a),hyp=Math.hypot,cl=(v,a,b)=>Math.max(a,Math.min(b,v));
 const ST={scout:{n:'Scout Car',k:'Q',cost:80,hp:60,spd:130,rng:120,dmg:6,rate:.35,vis:420},
 inf:{n:'Infantry',k:'F',cost:100,hp:70,spd:55,rng:130,dmg:16,rate:1.3,vis:230},
@@ -49,7 +49,7 @@ function applyMap(kind){MAP=kind;placeCap(kind=='snow'?1200:1000);WX.fog=kind=='
  BASE.getContext('2d').drawImage(TC,0,0);if(kind=='snow'){drawRoads(g);drawKits(g)}}
 
 let E=[],P=[],FX=[],CR=[],SC=[],WR=[],HE=[],nid=1,sel=[],grp={},T=0,over=0,cam={x:0,y:1700,z:1},keys={},mouse={x:0,y:0,in:0,drag:null,pan:null,stroke:null},msgT=0;
-const F=FN.map((n,i)=>({i,oil:300,alive:1,vis:new Uint8Array(G*G),gh:new Map(),at:rnd(0,1.5)}));
+const F=FN.map((n,i)=>({i,oil:260,alive:1,vis:new Uint8Array(G*G),gh:new Map(),at:rnd(0,1.5)}));
 function mk(o){o.id=nid++;o.ang=o.ang||0;o.cd=0;E.push(o);return o}
 function unit(t,f,x,y){const s=ST[t];return mk({t,f,x,y,hp:s.hp,mhp:s.hp,u:1,path:[],tgt:null,act:null,at:null,sc:0,ft:null,stop:0,rt:0})}
 const hqs=[[500,2150],[300,300],[1200,260],[1900,2150],[2100,300]].map((p,i)=>mk({t:'town',f:i,x:p[0],y:p[1],r:26,s:1,cap:0,cf:-1,gar:2,capital:0,isHQ:1,dormant:i?0:1,q:[],qt:0}));
@@ -421,7 +421,7 @@ function update(dt){T+=dt;updWx(dt);updHeli(dt);
  const us=E.filter(e=>e.u);for(const t of us)if(t.t=='truck'&&!t.dead)for(const u of us)if(u.f!=t.f&&u.t!='truck'&&!(u.drop>0)&&hyp(u.x-t.x,u.y-t.y)<18){kill(t);if(u.f==MYF)say('Enemy fuel truck intercepted - grab the oil!');break}
  for(let i=0;i<us.length;i++)for(let j=i+1;j<us.length;j++){const a=us[i],b=us[j],d=hyp(a.x-b.x,a.y-b.y);if(d<16&&d>.01&&a.f!=b.f){const p=(16-d)/2,dx=(a.x-b.x)/d*p,dy=(a.y-b.y)/d*p;if(!isW(a.x+dx,a.y+dy)||isW(a.x,a.y)){a.x+=dx;a.y+=dy}if(!isW(b.x-dx,b.y-dy)||isW(b.x,b.y)){b.x-=dx;b.y-=dy}}}
  for(const r of [...rigs,...towns,...hqs]){if(r.dormant)continue;const fs=new Set();for(const u of us)if(u.t!='truck'&&u.t!='art'&&u.t!='mcv'&&hyp(u.x-r.x,u.y-r.y)<60)fs.add(u.f);
-  if(fs.size==1){const f=[...fs][0];if(f!=r.f){if(r.cf!=f){r.cf=f;r.cap=0}r.cap+=dt/(r.t=='rig'?4:5);if(r.cap>=1){r.f=f;r.cap=0;r.gar=0;r.tm=6;if(r.q)r.q.length=0;if(f==MYF)say('Captured '+r.t)}}else r.cap=Math.max(0,r.cap-dt*.5)}else if(!fs.size)r.cap=Math.max(0,r.cap-dt*.3)}
+  if(fs.size==1){const f=[...fs][0];if(f!=r.f){if(r.cf!=f){r.cf=f;r.cap=0}r.cap+=dt/(r.t=='rig'?6:7);if(r.cap>=1){r.f=f;r.cap=0;r.gar=0;r.tm=6;if(r.q)r.q.length=0;if(f==MYF)say('Captured '+r.t)}}else r.cap=Math.max(0,r.cap-dt*.5)}else if(!fs.size)r.cap=Math.max(0,r.cap-dt*.3)}
  for(const r of rigs)if(r.f>=0&&!r.tk&&F[r.f].alive){r.tm-=dt;if(r.tm<=0){const t=unit('truck',r.f,r.x,r.y);t.cur=r.nd;t.rt=[];t.src=r;r.tk=t;r.tm=6}}
  for(let i=CR.length;i--;){const c=CR[i];c.l-=dt;const u=us.find(u=>u.t!='truck'&&hyp(u.x-c.x,u.y-c.y)<28);if(u){F[u.f].oil+=c.o;CR.splice(i,1)}else if(c.l<=0)CR.splice(i,1)}
  for(let i=P.length;i--;){const p=P[i];if(p.delay>0){p.delay-=dt;continue}if(p.tg&&p.tg.hp>0){p.tx=p.tg.x;p.ty=p.tg.y}const dx=p.tx-p.x,dy=p.ty-p.y,d=hyp(dx,dy),s=p.sp*dt;if(d<=s+4){impact(p);P.splice(i,1)}else{p.x+=dx/d*s;p.y+=dy/d*s;if(p.rk&&(p.sm=(p.sm||0)+dt)>.05){p.sm=0;FX.push({x:p.x,y:p.y,r:0,t:0,k:'smoke'})}}}
