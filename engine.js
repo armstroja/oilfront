@@ -131,7 +131,7 @@ function say(s){$('msg').textContent=s;msgT=3}
 function hurt(e,d){if(e.hp<=0||e.drop>0)return;if(e.u)d*=cov(e);e.hp-=d;if(e.hp<=0)kill(e)}
 function cov(e){let m=1;if(trenches.some(t=>t.f==e.f&&segD(e.x,e.y,t.a,t.b).d<t.r))m=e.t=='inf'?.4:.65;if(E.some(s=>s.cover&&s.f==e.f&&hyp(s.x-e.x,s.y-e.y)<s.cover))m=Math.min(m,e.t=='inf'?.45:.7);return m}
 function hurtB(b,d){if(b.hp<=0)return;b.hp-=d;if(b.hp<=0){b.hp=0;fx(b.x,b.y,60);say('A bridge was destroyed!')}}
-function kill(e,q){if(e.dead)return;e.dead=1;e.hp=0;E.splice(E.indexOf(e),1);sel=sel.filter(s=>s!=e);
+function kill(e,q){if(e.dead)return;orphanJobs(e,q);e.dead=1;e.hp=0;E.splice(E.indexOf(e),1);sel=sel.filter(s=>s!=e);
 if(e.def&&e.site&&F[e.f])F[e.f].oil+=DEF[e.k].cost*.5;
 if(e.def&&e.k=='bunker'){TC.getContext('2d').drawImage(Assets.get('bunkerRubble',0),Math.round(e.x-16),Math.round(e.y-16))}if(!q)fx(e.x,e.y,e.t=='hq'?70:16);
 if(!q&&e.u&&e.t!='inf'){WR.push({x:e.x,y:e.y,ang:e.ang,k:e.t=='tank'||e.t=='art'?'wreckTank':'wreckTruck'});if(WR.length>70)WR.shift()}
@@ -416,7 +416,7 @@ function roadAt(x,y){let b=null,bd=40;for(const n of N)for(const e of n.a)if(!e.
 function roadSurfaceAt(x,y){const q=roadAt(x,y);if(q)return{...q,rot:Math.atan2(q.e.n.y-q.n.y,q.e.n.x-q.n.x)};
  const b=bridges.find(b=>b.hp>0&&Math.abs(x-b.x)<40&&Math.abs(y-RY)<60);return b?{x:b.x,y:RY,rot:Math.PI/2,bridge:b}:null}
 let aiT=0,visT=0;
-function update(dt){T+=dt;updWx(dt);updHeli(dt);
+function update(dt){T+=dt;updWx(dt);updHeli(dt);jobTick(dt);
  for(const e of E.slice()){if(e.dead)continue;if(e.cd>0)e.cd-=dt;if(e.u)unitAI(e,dt);else if(e.t=='hq'||e.t=='town')turret(e,dt);else if(e.def&&!e.site)defAI(e,dt)}
  const us=E.filter(e=>e.u);for(const t of us)if(t.t=='truck'&&!t.dead)for(const u of us)if(u.f!=t.f&&u.t!='truck'&&!(u.drop>0)&&hyp(u.x-t.x,u.y-t.y)<18){kill(t);if(u.f==MYF)say('Enemy fuel truck intercepted - grab the oil!');break}
  for(let i=0;i<us.length;i++)for(let j=i+1;j<us.length;j++){const a=us[i],b=us[j],d=hyp(a.x-b.x,a.y-b.y);if(d<16&&d>.01&&a.f!=b.f){const p=(16-d)/2,dx=(a.x-b.x)/d*p,dy=(a.y-b.y)/d*p;if(!isW(a.x+dx,a.y+dy)||isW(a.x,a.y)){a.x+=dx;a.y+=dy}if(!isW(b.x-dx,b.y-dy)||isW(b.x,b.y)){b.x-=dx;b.y-=dy}}}
@@ -475,7 +475,7 @@ function draw(){const g=X,z=cam.z,vw=C.width/z,vh=C.height/z;g.setTransform(1,0,
     if(e.act!='rep'){g.strokeStyle='#e8b04a';g.beginPath();g.arc(tx,ty,14,-1.57,-1.57+6.28*cl(bj?t.prog:(e.w||0)/dur,0,1));g.stroke()}
     g.strokeStyle='#fff';g.beginPath();g.arc(tx,ty,9,T*8,T*8+1.8);g.stroke()}}
   if(sel.includes(e)&&e.path.length){g.strokeStyle='rgba(255,255,255,.25)';g.beginPath();g.moveTo(e.x,e.y);for(const p of e.path)g.lineTo(p.x,p.y);g.stroke()}}
- for(const e of sel)if(!e.u&&e.f==MYF){g.strokeStyle='#fff';g.strokeRect(e.x-e.r-4,e.y-e.r-4,e.r*2+8,e.r*2+8)}
+ drawOrph(g,inV);for(const e of sel)if(!e.u&&e.f==MYF){g.strokeStyle='#fff';g.strokeRect(e.x-e.r-4,e.y-e.r-4,e.r*2+8,e.r*2+8)}
  for(const p of P){if(p.delay>0)continue;const h=p.ar?Math.sin(Math.PI*(1-hyp(p.tx-p.x,p.ty-p.y)/Math.max(1,p.tot)))*50:0;if(vi(MYF,p.x,p.y)<2&&p.f!=MYF)continue;if(p.rk)spr(g,'rocket',p.f,p.x,p.y-h,Math.atan2(p.ty-p.sy,p.tx-p.sx)+Math.PI/2,.9);else R(g,p.x-2,p.y-2,4,4,'#ffe')}
  for(const f of FX){if(vi(MYF,f.x,f.y)<1)continue;if(f.k){g.globalAlpha=.8*(1-f.t);spr(g,'smokePuff',0,f.x,f.y,0,1.5)}else{g.globalAlpha=1;spr(g,'explosion'+Math.min(6,Math.floor(f.t*7)),0,f.x,f.y,0,cl(f.r/16,.7,4))}g.globalAlpha=1}
  for(const h of HE){spr(g,'heliTrans',h.f,h.x,h.y,h.ang+Math.PI/2,2);spr(g,'heliRotor',0,h.x,h.y,h.k*30,2)}
@@ -494,6 +494,45 @@ function mini(){const m=150/W,g=MX;g.drawImage(TC,0,0,150,150);
 for(const h of hqs){if(!h.f)continue;unit('scout',h.f,h.x+50,h.y+(h.y<RY?70:-70));unit('tank',h.f,h.x-10,h.y+(h.y<RY?80:-80));unit('inf',h.f,h.x-60,h.y+(h.y<RY?70:-70))}
 updVis();F[MYF].vis.fill(2);updGh(0);updFog();cam.z=Math.max(.2,Math.min(C.width/W,(C.height-90)/W));cam.x=(W-C.width/cam.z)/2;cam.y=(W-C.height/cam.z)/2;
 document.querySelectorAll('#mapMenu button').forEach(b=>b.addEventListener('click',()=>{$('mapMenu').style.display='none';applyMap(b.dataset.map);dropping=1;sel=[];cam.z=Math.max(.2,Math.min(C.width/W,(C.height-90)/W));cam.x=(W-C.width/cam.z)/2;cam.y=(W-C.height/cam.z)/2;say(b.dataset.map=='snow'?'Vietnam Jungle selected':'Desert Front selected')}));
+/*jobsites-v1*/
+/* Abandoned work: when an engineer dies, whatever it was building (or had queued) becomes a jobsite. */
+const ORPH=[],JOB_R=900,JOB_CHUNK=5,JOB_FACTIONS=f=>f==MYF;let jobT=0;
+const jobHeld=(j,ex)=>E.some(o=>o!==ex&&o.t=='eng'&&!o.dead&&(o.at===j||(o.bq&&o.bq.includes(j))));
+function jobOK(j){if(!j.orph||!F[j.jf]||!F[j.jf].alive)return 0;if(j.road)return !!j.site&&MRS.includes(j);if(j.def)return !j.dead&&!!j.site;return 1}
+function orphanJobs(e,q){if(q||e.t!='eng'||!F[e.f]||!F[e.f].alive)return;
+ const js=[],add=j=>{if(j&&!j.dead&&!j.orph&&(j.site||j.pt)&&!js.includes(j))js.push(j)};
+ if(e.act=='build'||e.act=='dig'||e.act=='road')add(e.at);
+ for(const j of e.bq||[])add(j);
+ let n=0;for(const j of js){if(jobHeld(j,e))continue;j.orph=1;j.jf=e.f;ORPH.push(j);n++}
+ if(n&&e.f==MYF)say('Engineer lost - unfinished work left as a jobsite')}
+function takeJob(u,j){
+ if(j.pt&&j.sid!==undefined){let r;while((r=ORPH.find(o=>o.pt&&o.jf==j.jf&&o.sid===j.sid&&o.k===j.k-1)))j=r}/* start at the head of the unfinished run */
+ const i=ORPH.indexOf(j);if(i>=0)ORPH.splice(i,1);j.orph=0;cmd(u);u.w=0;
+ if(j.pt){/* trench: also take the next pieces of the same stroke so the line keeps going */
+  const ch=[];for(let n=1;n<JOB_CHUNK;n++){const q=ORPH.find(o=>o.pt&&o.jf==j.jf&&o.sid!==undefined&&o.sid===j.sid&&o.k===j.k+n);if(!q)break;ORPH.splice(ORPH.indexOf(q),1);q.orph=0;ch.push(q)}
+  u.act='dig';u.at=j;u.bq=ch}
+ else{u.act=j.road?'road':'build';u.at=j}
+ if(u.f==MYF)say('Engineer resuming unfinished work')}
+function jobTick(dt){jobT-=dt;if(jobT>0)return;jobT=.5;
+ for(let i=ORPH.length;i--;)if(!jobOK(ORPH[i])){ORPH[i].orph=0;ORPH.splice(i,1)}
+ if(!ORPH.length)return;
+ const bridgeUp=MAP=='snow'||bridges.some(b=>b.hp>0);
+ for(const u of E){if(u.t!='eng'||u.dead||u.drop>0||!JOB_FACTIONS(u.f)||u.act||u.path.length||(u.bq&&u.bq.length))continue;
+  let b=null,bd=JOB_R;
+  for(const j of ORPH){if(j.jf!=u.f)continue;if(!bridgeUp&&side(j.y)!=side(u.y))continue;const d=hyp(j.x-u.x,j.y-u.y);if(d<bd){bd=d;b=j}}
+  if(b)takeJob(u,b)}}
+function drawOrph(g,inV){const mine=ORPH.filter(j=>j.jf==MYF);if(!mine.length)return;
+ const pulse=.55+.35*Math.sin(T*4),col='rgba(255,200,60,'+pulse+')',pts=mine.filter(j=>j.pt);
+ g.save();g.lineWidth=2;g.setLineDash([4,4]);
+ if(pts.length)drawDigPlan(g,pts);
+ g.strokeStyle=col;
+ const mark=(x,y)=>{if(!inV({x,y}))return;g.beginPath();g.arc(x,y,13,0,6.283);g.stroke();g.fillStyle=col;g.fillRect(x-1,y-6,2,7);g.fillRect(x-1,y+3,2,2)};
+ for(const run of trenchRuns(pts))mark(run[0].x,run[0].y);
+ for(const j of pts)if(j.sid===undefined)mark(j.x,j.y);
+ for(const j of mine){if(j.pt)continue;
+  if(j.road){g.beginPath();g.moveTo(j.a.x,j.a.y);g.lineTo(j.b.x,j.b.y);g.stroke();mark(j.x,j.y)}
+  else mark(j.x,j.y-j.r-8)}
+ g.restore()}
 let last=performance.now(),hT=0;
 /*fixpatch-v1*/
 function roadNear(x,y,m){for(const s of segs()){if(s.br&&s.br.hp<=0)continue;if(segD(x,y,s.a,s.b).d<m)return 1}for(const r of MRS)if(!r.site&&!r.hq&&segD(x,y,r.a,r.b).d<m)return 1;return 0}
